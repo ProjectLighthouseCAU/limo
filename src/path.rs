@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, fmt, ops::Deref};
+use std::{borrow::Borrow, convert::Infallible, fmt, ops::Deref, str::FromStr};
 
 use ref_cast::RefCast;
 
@@ -17,6 +17,32 @@ pub struct VirtualPathBuf<const IS_ABS: bool>(Vec<String>);
 impl<const IS_ABS: bool> VirtualPathBuf<IS_ABS> {
     pub fn new() -> Self {
         Self(Vec::new())
+    }
+}
+
+impl<const IS_ABS: bool> FromIterator<String> for VirtualPathBuf<IS_ABS> {
+    fn from_iter<T>(iter: T) -> Self where T: IntoIterator<Item = String> {
+        Self(iter.into_iter().collect())
+    }
+}
+
+impl<const IS_ABS: bool> From<Vec<String>> for VirtualPathBuf<IS_ABS> {
+    fn from(value: Vec<String>) -> Self {
+        Self(value)
+    }
+}
+
+impl<const IS_ABS: bool> From<&str> for VirtualPathBuf<IS_ABS> {
+    fn from(value: &str) -> Self {
+        Self(value.split(SEPARATOR).map(|s| s.to_owned()).collect())
+    }
+}
+
+impl<const IS_ABS: bool> FromStr for VirtualPathBuf<IS_ABS> {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(s.into())
     }
 }
 
@@ -39,6 +65,10 @@ pub struct VirtualPath<const IS_ABS: bool>([String]);
 impl<const IS_ABS: bool> VirtualPath<IS_ABS> {
     pub fn parent(&self) -> &Self {
         Self::ref_cast(&self.0[..(self.0.len() - 1)])
+    }
+
+    pub fn join(&self, path: impl AsRef<VirtualPath<REL>>) -> VirtualPathBuf<IS_ABS> {
+        self.0.iter().chain(&path.as_ref().0).cloned().collect()
     }
 }
 
@@ -66,7 +96,7 @@ impl<const IS_ABS: bool> ToOwned for VirtualPath<IS_ABS> {
     type Owned = VirtualPathBuf<IS_ABS>;
 
     fn to_owned(&self) -> Self::Owned {
-        VirtualPathBuf(self.0.into_iter().map(|s| s.to_string()).collect())
+        self.0.into_iter().map(|s| s.to_string()).collect()
     }
 }
 
