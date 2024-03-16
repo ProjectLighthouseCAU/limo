@@ -12,15 +12,14 @@ fn main() {
     loop {
         match rl.readline(&format!("limo:{} $ ", cwd)) {
             Ok(line) => {
-                if let Some((cmd, args)) = line.split_once(' ') {
-                    match cmd {
-                        "cd" => {
-                            cwd.push(VirtualPathBuf::from(args));
-                        },
-                        _ => {
-                            println!("Unknown command '{}'", cmd)
-                        },
-                    }
+                let (cmd, args) = line.split_once(' ').unwrap_or_else(|| (line.as_ref(), ""));
+                match cmd {
+                    "cd" => {
+                        cwd.push(VirtualPathBuf::from(args));
+                    },
+                    _ => {
+                        println!("Unknown command '{}'", cmd)
+                    },
                 }
             },
             Err(ReadlineError::Interrupted) => {},
