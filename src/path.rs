@@ -20,11 +20,21 @@ impl VirtualPathBuf {
     pub fn push(&mut self, path: impl AsRef<VirtualPath>) {
         let path = path.as_ref();
         let is_abs = path.is_absolute();
-        let iter = path.0.into_iter().cloned();
+
         if is_abs {
-            self.0 = iter.collect();
-        } else {
-            self.0.extend(iter);
+            self.0.clear();
+        }
+
+        for segment in path.0.into_iter() {
+            match segment.as_str() {
+                "." => {},
+                ".." => {
+                    self.0.pop();
+                },
+                _ => {
+                    self.0.push(segment.clone());
+                }
+            }
         }
     }
 }
