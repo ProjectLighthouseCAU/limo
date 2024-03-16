@@ -5,49 +5,49 @@ use ref_cast::RefCast;
 /// The separator for virtual paths.
 pub const SEPARATOR: &str = "/";
 
-/// Marker const for absolute paths.
-pub const ABS: bool = true;
-
-/// Marker const for relative paths.
-pub const REL: bool = false;
-
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct VirtualPathBuf<const IS_ABS: bool>(Vec<String>);
+pub struct VirtualPathBuf(Vec<String>);
 
-impl<const IS_ABS: bool> VirtualPathBuf<IS_ABS> {
-    pub fn new() -> Self {
+impl VirtualPathBuf {
+    pub fn root() -> Self {
+        Self(vec![String::new()])
+    }
+
+    pub fn empty() -> Self {
         Self(Vec::new())
     }
 
-    pub fn push<const PUSHED_IS_ABS: bool>(&mut self, path: impl AsRef<VirtualPath<PUSHED_IS_ABS>>) {
-        let path_iter = path.as_ref().0.into_iter().cloned();
-        if PUSHED_IS_ABS {
-            self.0 = path_iter.collect();
+    pub fn push(&mut self, path: impl AsRef<VirtualPath>) {
+        let path = path.as_ref();
+        let is_abs = path.is_absolute();
+        let iter = path.0.into_iter().cloned();
+        if is_abs {
+            self.0 = iter.collect();
         } else {
-            self.0.extend(path_iter);
+            self.0.extend(iter);
         }
     }
 }
 
-impl<const IS_ABS: bool> FromIterator<String> for VirtualPathBuf<IS_ABS> {
+impl FromIterator<String> for VirtualPathBuf {
     fn from_iter<T>(iter: T) -> Self where T: IntoIterator<Item = String> {
         Self(iter.into_iter().collect())
     }
 }
 
-impl<const IS_ABS: bool> From<Vec<String>> for VirtualPathBuf<IS_ABS> {
+impl From<Vec<String>> for VirtualPathBuf {
     fn from(value: Vec<String>) -> Self {
         Self(value)
     }
 }
 
-impl<const IS_ABS: bool> From<&str> for VirtualPathBuf<IS_ABS> {
+impl From<&str> for VirtualPathBuf {
     fn from(value: &str) -> Self {
         Self(value.split(SEPARATOR).map(|s| s.to_owned()).collect())
     }
 }
 
-impl<const IS_ABS: bool> FromStr for VirtualPathBuf<IS_ABS> {
+impl FromStr for VirtualPathBuf {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -55,78 +55,70 @@ impl<const IS_ABS: bool> FromStr for VirtualPathBuf<IS_ABS> {
     }
 }
 
-impl fmt::Display for VirtualPathBuf<ABS> {
+impl fmt::Display for VirtualPathBuf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.deref())
     }
 }
 
-impl fmt::Display for VirtualPathBuf<REL> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.join(SEPARATOR))
-    }
-}
-
 #[derive(Debug, Hash, PartialEq, Eq, RefCast)]
 #[repr(transparent)]
-pub struct VirtualPath<const IS_ABS: bool>([String]);
+pub struct VirtualPath([String]);
 
-impl<const IS_ABS: bool> VirtualPath<IS_ABS> {
+impl VirtualPath {
     pub fn parent(&self) -> &Self {
         Self::ref_cast(&self.0[..(self.0.len() - 1)])
     }
 
-    pub fn join(&self, path: impl AsRef<VirtualPath<REL>>) -> VirtualPathBuf<IS_ABS> {
+    pub fn join(&self, path: impl AsRef<VirtualPath>) -> VirtualPathBuf {
         let mut owned = self.to_owned();
         owned.push(path);
         owned
     }
-}
 
-impl VirtualPath<ABS> {
-    pub fn root() -> &'static Self {
-        Self::ref_cast(&[])
+    pub fn is_absolute(&self) -> bool {
+        self.0.len() >= 1 && self.0[0].is_empty()
     }
 
     pub fn is_root(&self) -> bool {
-        self.0.is_empty()
+        self.0.len() == 1 && self.is_absolute()
     }
 }
 
-impl<const IS_ABS: bool> fmt::Display for VirtualPath<IS_ABS> {
+impl fmt::Display for VirtualPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if IS_ABS {
-            write!(f, "{}{}", SEPARATOR, self.0.join(SEPARATOR))
+        if self.is_root() {
+            write!(f, "/")
         } else {
             write!(f, "{}", self.0.join(SEPARATOR))
         }
     }
 }
 
-impl<const IS_ABS: bool> ToOwned for VirtualPath<IS_ABS> {
-    type Owned = VirtualPathBuf<IS_ABS>;
+impl ToOwned for VirtualPath {
+    type Owned = VirtualPathBuf;
 
     fn to_owned(&self) -> Self::Owned {
         self.0.into_iter().map(|s| s.to_string()).collect()
     }
 }
 
-impl<const IS_ABS: bool> Deref for VirtualPathBuf<IS_ABS> {
-    type Target = VirtualPath<IS_ABS>;
+impl Deref for VirtualPathBuf {
+    type Target = VirtualPath;
 
-    fn deref(&self) -> &VirtualPath<IS_ABS> {
-        VirtualPath::<IS_ABS>::ref_cast(&self.0[..])
+    fn deref(&self) -> &VirtualPath {
+        VirtualPath::ref_cast(&self.0[..])
     }
 }
 
-impl<const IS_ABS: bool> AsRef<VirtualPath<IS_ABS>> for VirtualPathBuf<IS_ABS> {
-    fn as_ref(&self) -> &VirtualPath<IS_ABS> {
+impl AsRef<VirtualPath> for VirtualPathBuf {
+    fn as_ref(&self) -> &VirtualPath {
         self.deref()
     }
 }
 
-impl<const IS_ABS: bool> Borrow<VirtualPath<IS_ABS>> for VirtualPathBuf<IS_ABS> {
-    fn borrow(&self) -> &VirtualPath<IS_ABS> {
+impl Borrow<VirtualPath> for VirtualPathBuf {
+    fn borrow(&self) -> &VirtualPath {
         self.deref()
     }
 }

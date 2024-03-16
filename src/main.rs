@@ -1,13 +1,13 @@
 mod path;
 
-use path::{VirtualPath, VirtualPathBuf, ABS, REL};
+use path::VirtualPathBuf;
 use rustyline::{config::Configurer, error::ReadlineError, DefaultEditor};
 
 fn main() {
     let mut rl = DefaultEditor::new().unwrap();
     rl.set_auto_add_history(true);
 
-    let mut cwd = VirtualPathBuf::<ABS>::new();
+    let mut cwd = VirtualPathBuf::root();
 
     loop {
         match rl.readline(&format!("limo:{} $ ", cwd)) {
@@ -15,7 +15,7 @@ fn main() {
                 if let Some((cmd, args)) = line.split_once(' ') {
                     match cmd {
                         "cd" => {
-                            cwd = cwd.join(VirtualPathBuf::<REL>::from(args));
+                            cwd.push(VirtualPathBuf::from(args));
                         },
                         _ => {
                             println!("Unknown command '{}'", cmd)
