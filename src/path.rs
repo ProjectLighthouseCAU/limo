@@ -18,6 +18,15 @@ impl<const IS_ABS: bool> VirtualPathBuf<IS_ABS> {
     pub fn new() -> Self {
         Self(Vec::new())
     }
+
+    pub fn push<const PUSHED_IS_ABS: bool>(&mut self, path: impl AsRef<VirtualPath<PUSHED_IS_ABS>>) {
+        let path_iter = path.as_ref().0.into_iter().cloned();
+        if PUSHED_IS_ABS {
+            self.0 = path_iter.collect();
+        } else {
+            self.0.extend(path_iter);
+        }
+    }
 }
 
 impl<const IS_ABS: bool> FromIterator<String> for VirtualPathBuf<IS_ABS> {
@@ -68,7 +77,9 @@ impl<const IS_ABS: bool> VirtualPath<IS_ABS> {
     }
 
     pub fn join(&self, path: impl AsRef<VirtualPath<REL>>) -> VirtualPathBuf<IS_ABS> {
-        self.0.iter().chain(&path.as_ref().0).cloned().collect()
+        let mut owned = self.to_owned();
+        owned.push(path);
+        owned
     }
 }
 
