@@ -47,6 +47,18 @@ impl FromIterator<String> for VirtualPathBuf {
     }
 }
 
+impl<const N: usize> From<[&str; N]> for VirtualPathBuf {
+    fn from(value: [&str; N]) -> Self {
+        Self(value.map(|s| s.to_string()).into())
+    }
+}
+
+impl From<&[String]> for VirtualPathBuf {
+    fn from(value: &[String]) -> Self {
+        Self(value.into())
+    }
+}
+
 impl From<Vec<String>> for VirtualPathBuf {
     fn from(value: Vec<String>) -> Self {
         Self(value)
@@ -55,7 +67,11 @@ impl From<Vec<String>> for VirtualPathBuf {
 
 impl From<&str> for VirtualPathBuf {
     fn from(value: &str) -> Self {
-        Self(value.split(SEPARATOR).map(|s| s.to_owned()).collect())
+        match value {
+            "" => Self::empty(),
+            SEPARATOR => Self::root(),
+            _ => Self(value.split(SEPARATOR).map(|s| s.to_owned()).collect()),
+        }
     }
 }
 
@@ -158,5 +174,35 @@ impl AsRef<VirtualPath> for VirtualPathBuf {
 impl Borrow<VirtualPath> for VirtualPathBuf {
     fn borrow(&self) -> &VirtualPath {
         self.deref()
+    }
+}
+
+mod tests {
+    use crate::path::VirtualPathBuf;
+
+    macro_rules! assert_roundtrips {
+        ($expr:expr) => {
+            assert_eq!($expr.to_owned(), format!("{}", VirtualPathBuf::from($expr)))
+        };
+    }
+
+    #[test]
+    fn parsing() {
+        assert_eq!(VirtualPathBuf::from(""), VirtualPathBuf::from([]));
+        assert_eq!(VirtualPathBuf::from("/"), VirtualPathBuf::from([""]));
+        assert_eq!(VirtualPathBuf::from("/a"), VirtualPathBuf::from(["", "a"]));
+        assert_eq!(VirtualPathBuf::from("/a/b"), VirtualPathBuf::from(["", "a", "b"]));
+        assert_eq!(VirtualPathBuf::from("a"), VirtualPathBuf::from(["a"]));
+        assert_eq!(VirtualPathBuf::from("a/b"), VirtualPathBuf::from(["a", "b"]));
+    }
+
+    #[test]
+    fn roundtrips() {
+        assert_roundtrips!("");
+        assert_roundtrips!("/");
+        assert_roundtrips!("/a");
+        assert_roundtrips!("/a/b");
+        assert_roundtrips!("a");
+        assert_roundtrips!("a/b");
     }
 }
