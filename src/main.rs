@@ -8,6 +8,7 @@ use context::Context;
 use lighthouse_client::{protocol::Authentication, Lighthouse, LIGHTHOUSE_URL};
 use path::VirtualPathBuf;
 use rustyline::{config::Configurer, error::ReadlineError, DefaultEditor};
+use tokio::fs;
 use url::Url;
 
 #[derive(Parser)]
@@ -21,6 +22,8 @@ struct Args {
     /// The server URL.
     #[arg(long, env = "LIGHTHOUSE_URL", default_value = LIGHTHOUSE_URL)]
     url: String,
+    /// Path to a shell script to interpret.
+    script_path: Option<String>,
 }
 
 #[tokio::main]
@@ -33,20 +36,30 @@ async fn main() -> Result<()> {
     let url = Url::parse(&args.url)?;
     let host = url.host_str().unwrap_or("?");
 
+    let ctx = Context {
+        lh: Lighthouse::connect_with_tokio_to(&args.url, auth).await?,
+        cwd: VirtualPathBuf::root(),
+        host: host.to_string(),
+        username: args.username,
+    };
+
+    if let Some(script_path) = args.script_path {
+        let script = fs::read_to_string(script_path).await?;
+        run_script(&script, ctx).await
+    } else {
+        run_interactive(ctx).await
+    }
+}
+
+async fn run_interactive(mut ctx: Context) -> Result<()> {
     let mut rl = DefaultEditor::new().unwrap();
     rl.set_auto_add_history(true);
 
-    let mut ctx = Context {
-        lh: Lighthouse::connect_with_tokio_to(&args.url, auth).await?,
-        cwd: VirtualPathBuf::root(),
-    };
-
     loop {
-        let prompt = format!("{}@{}:{} $ ", args.username, host, ctx.cwd);
+        let prompt = format!("{}@{}:{} $ ", ctx.username, ctx.host, ctx.cwd);
         match rl.readline(&prompt) {
             Ok(line) => {
-                let (cmd, args) = line.split_once(' ').unwrap_or_else(|| (line.as_ref(), ""));
-                let result = cmd::interpret(cmd, args, &mut ctx).await;
+                let result = interpret_line(&line, &mut ctx).await;
                 if let Err(e) = result {
                     println!("{}", e);
                 };
@@ -63,4 +76,20 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+async fn run_script(script: &str, mut ctx: Context) -> Result<()> {
+    for line in script.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with("#") {
+            continue
+        }
+        interpret_line(line, &mut ctx).await?;
+    }
+    Ok(())
+}
+
+async fn interpret_line(line: &str, ctx: &mut Context) -> Result<()> {
+    let (cmd, args) = line.split_once(' ').unwrap_or_else(|| (line.as_ref(), ""));
+    cmd::interpret(cmd, args, ctx).await
 }
