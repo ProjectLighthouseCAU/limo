@@ -105,6 +105,10 @@ impl VirtualPath {
     pub fn as_str_vec(&self) -> Vec<&str> {
         self.0.into_iter().map(|s| s.as_str()).collect()
     }
+
+    pub fn as_lh_vec(&self) -> Vec<&str> {
+        self.as_relative().as_str_vec()
+    }
 }
 
 impl AsRef<[String]> for &VirtualPath {
