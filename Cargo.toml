@@ -4,7 +4,7 @@ description = "Interactive shell for Project Lighthouse model servers"
 version = "1.0.2"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/fwcd/limo"
+repository = "https://github.com/ProjectLighthouseCAU/limo"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
