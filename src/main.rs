@@ -38,7 +38,7 @@ async fn main() -> Result<()> {
     };
 
     loop {
-        match rl.readline(&format!("limo:{} $ ", ctx.cwd)) {
+        match rl.readline(&format!("{}@{}:{} $ ", args.username, args.url, ctx.cwd)) {
             Ok(line) => {
                 let (cmd, args) = line.split_once(' ').unwrap_or_else(|| (line.as_ref(), ""));
                 let result = cmd::interpret(cmd, args, &mut ctx).await;
