@@ -42,7 +42,8 @@ async fn main() -> Result<()> {
     };
 
     loop {
-        match rl.readline(&format!("{}@{}:{} $ ", args.username, host, ctx.cwd)) {
+        let prompt = format!("{}@{}:{} $ ", args.username, host, ctx.cwd);
+        match rl.readline(&prompt) {
             Ok(line) => {
                 let (cmd, args) = line.split_once(' ').unwrap_or_else(|| (line.as_ref(), ""));
                 let result = cmd::interpret(cmd, args, &mut ctx).await;
