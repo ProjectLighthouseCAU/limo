@@ -732,6 +732,7 @@ dependencies = [
  "ref-cast",
  "rustyline",
  "tokio",
+ "url",
 ]
 
 [[package]]

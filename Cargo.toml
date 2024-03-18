@@ -16,3 +16,4 @@ lighthouse-client = "2.0.1"
 ref-cast = "1.0"
 rustyline = "14.0"
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread", "time"] }
+url = "2.5.0"

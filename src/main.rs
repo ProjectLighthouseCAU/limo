@@ -8,6 +8,7 @@ use context::Context;
 use lighthouse_client::{protocol::Authentication, Lighthouse, LIGHTHOUSE_URL};
 use path::VirtualPathBuf;
 use rustyline::{config::Configurer, error::ReadlineError, DefaultEditor};
+use url::Url;
 
 #[derive(Parser)]
 struct Args {
@@ -29,6 +30,9 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let auth = Authentication::new(&args.username, &args.token);
 
+    let url = Url::parse(&args.url)?;
+    let host = url.host_str().unwrap_or("?");
+
     let mut rl = DefaultEditor::new().unwrap();
     rl.set_auto_add_history(true);
 
@@ -38,7 +42,7 @@ async fn main() -> Result<()> {
     };
 
     loop {
-        match rl.readline(&format!("{}@{}:{} $ ", args.username, args.url, ctx.cwd)) {
+        match rl.readline(&format!("{}@{}:{} $ ", args.username, host, ctx.cwd)) {
             Ok(line) => {
                 let (cmd, args) = line.split_once(' ').unwrap_or_else(|| (line.as_ref(), ""));
                 let result = cmd::interpret(cmd, args, &mut ctx).await;
