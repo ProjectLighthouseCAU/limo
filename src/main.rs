@@ -22,6 +22,9 @@ struct Args {
     /// The server URL.
     #[arg(long, env = "LIGHTHOUSE_URL", default_value = LIGHTHOUSE_URL)]
     url: String,
+    /// Interpret/run the given command line.
+    #[arg(short)]
+    command: Option<String>,
     /// Path to a shell script to interpret.
     script_path: Option<String>,
 }
@@ -43,7 +46,9 @@ async fn main() -> Result<()> {
         username: args.username,
     };
 
-    if let Some(script_path) = args.script_path {
+    if let Some(command) = args.command {
+        run_script(&command, ctx).await
+    } else if let Some(script_path) = args.script_path {
         let script = fs::read_to_string(script_path).await?;
         run_script(&script, ctx).await
     } else {
