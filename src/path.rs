@@ -29,7 +29,9 @@ impl VirtualPathBuf {
             match segment.as_str() {
                 "." => {},
                 ".." => {
-                    self.0.pop();
+                    if !self.is_root() {
+                        self.0.pop();
+                    }
                 },
                 _ => {
                     self.0.push(segment.clone());
@@ -77,7 +79,11 @@ pub struct VirtualPath([String]);
 
 impl VirtualPath {
     pub fn parent(&self) -> &Self {
-        Self::ref_cast(&self.0[..(self.0.len() - 1)])
+        if self.is_root() {
+            self
+        } else {
+            Self::ref_cast(&self.0[..(self.0.len() - 1)])
+        }
     }
 
     pub fn join(&self, path: impl AsRef<VirtualPath>) -> VirtualPathBuf {
