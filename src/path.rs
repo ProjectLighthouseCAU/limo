@@ -93,6 +93,24 @@ impl VirtualPath {
     pub fn is_root(&self) -> bool {
         self.0.len() == 1 && self.is_absolute()
     }
+
+    pub fn as_relative(&self) -> &Self {
+        if self.is_absolute() {
+            Self::ref_cast(&self.0[1..])
+        } else {
+            self
+        }
+    }
+
+    pub fn as_str_vec(&self) -> Vec<&str> {
+        self.0.into_iter().map(|s| s.as_str()).collect()
+    }
+}
+
+impl AsRef<[String]> for &VirtualPath {
+    fn as_ref(&self) -> &[String] {
+        &self.0
+    }
 }
 
 impl fmt::Display for VirtualPath {
