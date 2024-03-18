@@ -44,6 +44,9 @@ async fn main() -> Result<()> {
                         let response = lh.list(&cwd.as_relative().as_str_vec()).await?;
                         println!("{}", response.payload);
                     },
+                    "pwd" => {
+                        println!("{}", cwd);
+                    },
                     _ => {
                         println!("Unknown command '{}'", cmd)
                     },
