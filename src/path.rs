@@ -177,6 +177,7 @@ impl Borrow<VirtualPath> for VirtualPathBuf {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use crate::path::VirtualPathBuf;
 
