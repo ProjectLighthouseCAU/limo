@@ -7,7 +7,7 @@ use clap::Parser;
 use context::Context;
 use lighthouse_client::{protocol::Authentication, Lighthouse, LIGHTHOUSE_URL};
 use path::VirtualPathBuf;
-use rustyline::{config::Configurer, error::ReadlineError, DefaultEditor};
+use rustyline::{config::Configurer, error::ReadlineError, history::DefaultHistory, Editor};
 use url::Url;
 
 #[derive(Parser)]
@@ -33,20 +33,20 @@ async fn main() -> Result<()> {
     let url = Url::parse(&args.url)?;
     let host = url.host_str().unwrap_or("?");
 
-    let mut rl = DefaultEditor::new().unwrap();
+    let mut rl = Editor::<Context, DefaultHistory>::new().unwrap();
     rl.set_auto_add_history(true);
-
-    let mut ctx = Context {
+    rl.set_helper(Some(Context {
         lh: Lighthouse::connect_with_tokio_to(&args.url, auth).await?,
         cwd: VirtualPathBuf::root(),
-    };
+    }));
 
     loop {
-        let prompt = format!("{}@{}:{} $ ", args.username, host, ctx.cwd);
+        let prompt = format!("{}@{}:{} $ ", args.username, host, rl.helper().unwrap().cwd);
         match rl.readline(&prompt) {
             Ok(line) => {
                 let (cmd, args) = line.split_once(' ').unwrap_or_else(|| (line.as_ref(), ""));
-                let result = cmd::interpret(cmd, args, &mut ctx).await;
+                let ctx = rl.helper_mut().unwrap();
+                let result = cmd::interpret(cmd, args, ctx).await;
                 if let Err(e) = result {
                     println!("{}", e);
                 };
