@@ -1,15 +1,17 @@
 mod cmd;
 mod context;
+mod interpret;
 mod path;
 
 use anyhow::Result;
 use clap::Parser;
-use context::Context;
 use lighthouse_client::{protocol::Authentication, Lighthouse, LIGHTHOUSE_URL};
 use path::VirtualPathBuf;
 use rustyline::{config::Configurer, error::ReadlineError, DefaultEditor};
 use tokio::fs;
 use url::Url;
+
+use crate::{context::Context, interpret::interpret_line};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -69,7 +71,7 @@ async fn run_interactive(mut ctx: Context) -> Result<()> {
         let prompt = format!("{}@{}:{} $ ", ctx.username, ctx.host, ctx.cwd);
         match rl.readline(&prompt) {
             Ok(line) => {
-                let result = cmd::interpret_line(&line, &mut ctx).await;
+                let result = interpret_line(&line, &mut ctx).await;
                 if let Err(e) = result {
                     println!("{}", e.to_string().trim());
                 };
@@ -94,7 +96,7 @@ async fn run_script(script: &str, mut ctx: Context) -> Result<()> {
         if line.is_empty() || line.starts_with("#") {
             continue
         }
-        cmd::interpret_line(line, &mut ctx).await?;
+        interpret_line(line, &mut ctx).await?;
     }
     Ok(())
 }
