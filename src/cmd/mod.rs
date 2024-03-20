@@ -13,6 +13,7 @@ mod rm;
 mod rmdir;
 mod touch;
 mod tree;
+mod uln;
 
 pub async fn interpret_line(line: &str, ctx: &mut Context) -> Result<()> {
     // TODO: Support quoting
@@ -36,6 +37,7 @@ async fn interpret(args: &[&str], ctx: &mut Context) -> Result<()> {
         "rmdir" => rmdir::invoke(args, ctx).await?,
         "touch" => touch::invoke(args, ctx).await?,
         "tree" => tree::invoke(args, ctx).await?,
+        "uln" => uln::invoke(args, ctx).await?,
         cmd => bail!("Unrecognized command {}", cmd),
     }
     Ok(())
