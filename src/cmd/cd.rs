@@ -10,7 +10,7 @@ struct Args {
     path: VirtualPathBuf,
 }
 
-pub async fn invoke(args: &[&str], ctx: &mut Context) -> Result<()> {
+pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<()> {
     let args = Args::try_parse_from(args)?;
     let new_cwd = ctx.cwd.join(args.path);
     ctx.lh.list(&new_cwd.as_lh_vec()).await?;

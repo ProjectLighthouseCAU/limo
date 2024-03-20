@@ -19,7 +19,7 @@ struct Args {
     path: VirtualPathBuf,
 }
 
-pub async fn invoke(args: &[&str], ctx: &mut Context) -> Result<()> {
+pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<()> {
     let args = Args::try_parse_from(args)?;
     let path = ctx.cwd.join(args.path);
     let response = ctx.lh.list(&path.as_lh_vec()).await?;

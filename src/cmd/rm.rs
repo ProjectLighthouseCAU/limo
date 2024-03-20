@@ -13,7 +13,7 @@ struct Args {
     paths: Vec<VirtualPathBuf>,
 }
 
-pub async fn invoke(args: &[&str], ctx: &mut Context) -> Result<()> {
+pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<()> {
     let args = Args::try_parse_from(args)?;
     for path in args.paths {
         let path = ctx.cwd.join(path);

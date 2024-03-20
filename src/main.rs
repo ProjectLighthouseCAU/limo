@@ -11,7 +11,7 @@ use rustyline::{config::Configurer, error::ReadlineError, DefaultEditor};
 use tokio::fs;
 use url::Url;
 
-use crate::{context::Context, interpret::interpret_line};
+use crate::{context::Context, interpret::CommandLine};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -71,7 +71,8 @@ async fn run_interactive(mut ctx: Context) -> Result<()> {
         let prompt = format!("{}@{}:{} $ ", ctx.username, ctx.host, ctx.cwd);
         match rl.readline(&prompt) {
             Ok(line) => {
-                let result = interpret_line(&line, &mut ctx).await;
+                let cmd_line: CommandLine = line.parse()?;
+                let result = cmd_line.interpret(&mut ctx).await;
                 if let Err(e) = result {
                     println!("{}", e.to_string().trim());
                 };
@@ -96,7 +97,8 @@ async fn run_script(script: &str, mut ctx: Context) -> Result<()> {
         if line.is_empty() || line.starts_with("#") {
             continue
         }
-        interpret_line(line, &mut ctx).await?;
+        let cmd_line: CommandLine = line.parse()?;
+        cmd_line.interpret(&mut ctx).await?;
     }
     Ok(())
 }

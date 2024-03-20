@@ -1,12 +1,26 @@
-use anyhow::Result;
+use std::str::FromStr;
+
+use anyhow::{Error, Result};
 
 use crate::{cmd, context::Context};
 
-pub async fn interpret_line(line: &str, ctx: &mut Context) -> Result<()> {
-    // TODO: Support quoting
-    let args: Vec<_> = line.split_whitespace().collect();
-    if args.is_empty() {
-        return Ok(());
+pub struct CommandLine {
+    args: Vec<String>,
+}
+
+impl CommandLine {
+    pub async fn interpret(&self, ctx: &mut Context) -> Result<()> {
+        cmd::invoke(&self.args, ctx).await
     }
-    cmd::invoke(&args, ctx).await
+}
+
+impl FromStr for CommandLine {
+    type Err = Error;
+
+    fn from_str(line: &str) -> Result<Self> {
+        // TODO: Support quoting
+        Ok(Self {
+            args: line.split_whitespace().map(|s| s.to_owned()).collect()
+        })
+    }
 }
