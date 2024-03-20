@@ -4,6 +4,9 @@ use lighthouse_client::protocol::Value;
 
 use crate::{context::Context, path::VirtualPathBuf};
 
+// TODO: Add support for copying (potentially multiple) src resources into a directory
+// TODO: Add support for copying directories (with -r flag)
+
 #[derive(Parser)]
 #[command(bin_name = "cp")]
 struct Args {

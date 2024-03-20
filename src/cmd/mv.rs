@@ -4,6 +4,9 @@ use lighthouse_client::protocol::Value;
 
 use crate::{context::Context, path::VirtualPathBuf};
 
+// TODO: Add support for moving (potentially multiple) src resources into a directory
+// TODO: Add support for moving directories
+
 #[derive(Parser)]
 #[command(bin_name = "mv")]
 struct Args {
