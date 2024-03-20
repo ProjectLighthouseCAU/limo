@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use anyhow::Result;
 use clap::Parser;
 use colored::Colorize;
@@ -15,8 +17,14 @@ struct Args {
 pub async fn invoke(args: &[&str], ctx: &mut Context) -> Result<()> {
     let args = Args::try_parse_from(args)?;
     let path = ctx.cwd.join(args.path);
-    let response = ctx.lh.list(&path.as_lh_vec()).await?;
-    print_tree(&format!("{}", ctx.cwd), Some(&response.payload), "", "");
+
+    let tree = ctx.lh.list(&path.as_lh_vec()).await?.payload;
+    print_tree(&format!("{}", ctx.cwd), Some(&tree), "", "");
+
+    let stats = Stats::from(&tree);
+    println!();
+    println!("{} directories, {} files", stats.directory_count, stats.file_count);
+
     Ok(())
 }
 
@@ -37,5 +45,47 @@ fn print_tree(name: &str, tree: Option<&DirectoryTree>, indent: &str, branch_ind
             };
             print_tree(child_name, child.as_ref(), &child_indent, &child_branch_indent);
         }
+    }
+}
+
+struct Stats {
+    directory_count: usize,
+    file_count: usize,
+}
+
+impl Default for Stats {
+    fn default() -> Self {
+        Self {
+            directory_count: 0,
+            file_count: 0,
+        }
+    }
+}
+
+impl Add for Stats {
+    type Output = Stats;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            directory_count: self.directory_count + rhs.directory_count,
+            file_count: self.file_count + rhs.file_count,
+        }
+    }
+}
+
+impl From<&DirectoryTree> for Stats {
+    fn from(tree: &DirectoryTree) -> Self {
+        let mut aggregate = tree.entries.iter()
+            .map(|(_, child)| {
+                if let Some(child) = child {
+                    Self::from(child)
+                } else {
+                    Self { file_count: 1, ..Default::default() }
+                }
+            })
+            .reduce(Add::add)
+            .unwrap_or_default();
+        aggregate.directory_count += 1;
+        aggregate
     }
 }
