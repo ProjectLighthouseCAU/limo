@@ -1,6 +1,6 @@
 mod cmd;
 mod context;
-mod interpret;
+mod line;
 mod path;
 
 use anyhow::Result;
@@ -11,7 +11,7 @@ use rustyline::{config::Configurer, error::ReadlineError, DefaultEditor};
 use tokio::fs;
 use url::Url;
 
-use crate::{context::Context, interpret::CommandLine};
+use crate::{context::Context, line::CommandLine};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
