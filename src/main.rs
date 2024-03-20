@@ -66,7 +66,7 @@ async fn run_interactive(mut ctx: Context) -> Result<()> {
             Ok(line) => {
                 let result = cmd::interpret_line(&line, &mut ctx).await;
                 if let Err(e) = result {
-                    println!("{}", e);
+                    println!("{}", e.to_string().trim());
                 };
             },
             Err(ReadlineError::Interrupted) => {},
