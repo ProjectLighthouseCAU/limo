@@ -20,6 +20,7 @@ macro_rules! cmd_mods {
 cmd_mods!(
     cat,
     cd,
+    cp,
     echo,
     ln,
     ls,
