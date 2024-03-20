@@ -71,8 +71,7 @@ async fn run_interactive(mut ctx: Context) -> Result<()> {
         let prompt = format!("{}@{}:{} $ ", ctx.username, ctx.host, ctx.cwd);
         match rl.readline(&prompt) {
             Ok(line) => {
-                let cmd_line: CommandLine = line.parse()?;
-                let result = cmd_line.interpret(&mut ctx).await;
+                let result = CommandLine::parse_interpret(&line, &mut ctx).await;
                 if let Err(e) = result {
                     println!("{}", e.to_string().trim());
                 };
@@ -97,8 +96,7 @@ async fn run_script(script: &str, mut ctx: Context) -> Result<()> {
         if line.is_empty() || line.starts_with("#") {
             continue
         }
-        let cmd_line: CommandLine = line.parse()?;
-        cmd_line.interpret(&mut ctx).await?;
+        CommandLine::parse_interpret(line, &mut ctx).await?;
     }
     Ok(())
 }
