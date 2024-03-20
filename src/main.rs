@@ -11,6 +11,8 @@ use rustyline::{config::Configurer, error::ReadlineError, DefaultEditor};
 use tokio::fs;
 use url::Url;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Parser)]
 struct Args {
     /// The username.
@@ -59,6 +61,8 @@ async fn main() -> Result<()> {
 async fn run_interactive(mut ctx: Context) -> Result<()> {
     let mut rl = DefaultEditor::new().unwrap();
     rl.set_auto_add_history(true);
+
+    println!("Limo {} (interactive shell)", VERSION);
 
     loop {
         let prompt = format!("{}@{}:{} $ ", ctx.username, ctx.host, ctx.cwd);
