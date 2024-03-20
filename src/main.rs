@@ -14,6 +14,7 @@ use url::Url;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Parser)]
+#[command(about, version)]
 struct Args {
     /// The username.
     #[arg(short, long, env = "LIGHTHOUSE_USER")]
