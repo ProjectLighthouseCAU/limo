@@ -14,7 +14,9 @@ pub async fn invoke(args: &[&str], ctx: &mut Context) -> Result<()> {
     let args = Args::try_parse_from(args)?;
     for path in args.paths {
         let path = ctx.cwd.join(path);
-        let tree = ctx.lh.list(&path.as_lh_vec()).await.context("Not a directory, use rm instead!")?.payload;
+        let tree = ctx.lh.list(&path.as_lh_vec()).await
+            .with_context(|| format!("{} is not a directory, use rm instead!", path))?
+            .payload;
         if !tree.entries.is_empty() {
             bail!("{} is not empty, use rm -r instead!", path);
         }
