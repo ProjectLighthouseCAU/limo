@@ -12,6 +12,11 @@ mod rm;
 mod touch;
 mod tree;
 
+pub async fn interpret_line(line: &str, ctx: &mut Context) -> Result<()> {
+    let (cmd, args) = line.split_once(' ').unwrap_or_else(|| (line.as_ref(), ""));
+    interpret(cmd, args, ctx).await
+}
+
 pub async fn interpret(cmd: &str, args: &str, ctx: &mut Context) -> Result<()> {
     match cmd {
         "cat" => cat::invoke(args, ctx).await?,

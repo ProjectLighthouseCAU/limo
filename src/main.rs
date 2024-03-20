@@ -64,7 +64,7 @@ async fn run_interactive(mut ctx: Context) -> Result<()> {
         let prompt = format!("{}@{}:{} $ ", ctx.username, ctx.host, ctx.cwd);
         match rl.readline(&prompt) {
             Ok(line) => {
-                let result = interpret_line(&line, &mut ctx).await;
+                let result = cmd::interpret_line(&line, &mut ctx).await;
                 if let Err(e) = result {
                     println!("{}", e);
                 };
@@ -89,12 +89,8 @@ async fn run_script(script: &str, mut ctx: Context) -> Result<()> {
         if line.is_empty() || line.starts_with("#") {
             continue
         }
-        interpret_line(line, &mut ctx).await?;
+        cmd::interpret_line(line, &mut ctx).await?;
     }
     Ok(())
 }
 
-async fn interpret_line(line: &str, ctx: &mut Context) -> Result<()> {
-    let (cmd, args) = line.split_once(' ').unwrap_or_else(|| (line.as_ref(), ""));
-    cmd::interpret(cmd, args, ctx).await
-}
