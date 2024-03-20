@@ -9,7 +9,7 @@ struct Args {
     #[arg(short, long, help = "Create intermediate directories and don't error if the directory exists")]
     parents: bool,
 
-    #[arg(default_value = ".", help = "The directory to create")]
+    #[arg(help = "The directory to create")]
     path: VirtualPathBuf,
 }
 
