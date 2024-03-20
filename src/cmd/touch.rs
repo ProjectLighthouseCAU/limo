@@ -6,13 +6,15 @@ use crate::{context::Context, path::VirtualPathBuf};
 #[derive(Parser)]
 #[command(bin_name = "touch")]
 struct Args {
-    #[arg(default_value = ".", help = "The resource to create")]
-    path: VirtualPathBuf,
+    #[arg(required = true, help = "The resources to create")]
+    paths: Vec<VirtualPathBuf>,
 }
 
 pub async fn invoke(args: &[&str], ctx: &mut Context) -> Result<()> {
     let args = Args::try_parse_from(args)?;
-    let path = ctx.cwd.join(args.path);
-    ctx.lh.create(&path.as_lh_vec()).await?;
+    for path in args.paths {
+        let path = ctx.cwd.join(path);
+        ctx.lh.create(&path.as_lh_vec()).await?;
+    }
     Ok(())
 }
