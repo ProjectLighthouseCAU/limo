@@ -31,9 +31,9 @@ fn print_tree(name: &str, tree: Option<&DirectoryTree>, indent: &str, branch_ind
         let mut it = tree.entries.iter().peekable();
         while let Some((child_name, child)) = it.next() {
             let (child_indent, child_branch_indent) = if it.peek().is_some() {
-                (format!("{}├──", branch_indent), format!("{}│  ", branch_indent))
+                (format!("{}├── ", branch_indent), format!("{}│   ", branch_indent))
             } else {
-                (format!("{}└──", branch_indent), format!("{}   ", branch_indent))
+                (format!("{}└── ", branch_indent), format!("{}    ", branch_indent))
             };
             print_tree(child_name, child.as_ref(), &child_indent, &child_branch_indent);
         }
