@@ -1,3 +1,4 @@
+use core::fmt;
 use std::ops::Add;
 
 use anyhow::Result;
@@ -23,7 +24,7 @@ pub async fn invoke(args: &[&str], ctx: &mut Context) -> Result<()> {
 
     let stats = Stats::from(&tree);
     println!();
-    println!("{} directories, {} files", stats.directory_count, stats.file_count);
+    println!("{}", stats);
 
     Ok(())
 }
@@ -87,5 +88,22 @@ impl From<&DirectoryTree> for Stats {
             .unwrap_or_default();
         aggregate.directory_count += 1;
         aggregate
+    }
+}
+
+impl fmt::Display for Stats {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.directory_count == 1 {
+            write!(f, "{} directory", self.directory_count)?;
+        } else {
+            write!(f, "{} directories", self.directory_count)?;
+        }
+        write!(f, ", ")?;
+        if self.file_count == 1 {
+            write!(f, "{} file", self.file_count)?;
+        } else {
+            write!(f, "{} files", self.file_count)?;
+        }
+        Ok(())
     }
 }
