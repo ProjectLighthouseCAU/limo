@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
+use colored::Colorize;
 use lighthouse_client::protocol::DirectoryTree;
 
 use crate::{context::Context, path::VirtualPathBuf};
@@ -20,7 +21,12 @@ pub async fn invoke(args: &[&str], ctx: &mut Context) -> Result<()> {
 }
 
 fn print_tree(name: &str, tree: Option<&DirectoryTree>, indent: &str, branch_indent: &str) {
-    println!("{}{}", indent, name);
+    print!("{}", indent);
+    if tree.is_some() {
+        println!("{}", name.blue());
+    } else {
+        println!("{}", name);
+    }
     if let Some(tree) = tree {
         let mut it = tree.entries.iter().peekable();
         while let Some((child_name, child)) = it.next() {
