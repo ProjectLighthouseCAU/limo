@@ -15,20 +15,21 @@ pub async fn invoke(args: &[&str], ctx: &mut Context) -> Result<()> {
     let args = Args::try_parse_from(args)?;
     let path = ctx.cwd.join(args.path);
     let response = ctx.lh.list(&path.as_lh_vec()).await?;
-    print_tree(&format!("{}", ctx.cwd), Some(&response.payload), 0);
+    print_tree(&format!("{}", ctx.cwd), Some(&response.payload), "", "");
     Ok(())
 }
 
-// TODO: Add unicode "branches"
-
-fn print_tree(name: &str, tree: Option<&DirectoryTree>, indent: i32) {
-    for _ in 0..indent {
-        print!(" ");
-    }
-    println!("{}", name);
+fn print_tree(name: &str, tree: Option<&DirectoryTree>, indent: &str, branch_indent: &str) {
+    println!("{}{}", indent, name);
     if let Some(tree) = tree {
-        for (child_name, child) in &tree.entries {
-            print_tree(child_name, child.as_ref(), indent + 2);
+        let mut it = tree.entries.iter().peekable();
+        while let Some((child_name, child)) = it.next() {
+            let (child_indent, child_branch_indent) = if it.peek().is_some() {
+                (format!("{}├──", branch_indent), format!("{}│  ", branch_indent))
+            } else {
+                (format!("{}└──", branch_indent), format!("{}   ", branch_indent))
+            };
+            print_tree(child_name, child.as_ref(), &child_indent, &child_branch_indent);
         }
     }
 }
