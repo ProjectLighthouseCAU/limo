@@ -9,6 +9,7 @@ mod ls;
 mod mkdir;
 mod pwd;
 mod rm;
+mod rmdir;
 mod touch;
 mod tree;
 
@@ -30,6 +31,7 @@ async fn interpret(args: &[&str], ctx: &mut Context) -> Result<()> {
         "mkdir" => mkdir::invoke(args, ctx).await?,
         "pwd" => pwd::invoke(args, ctx).await?,
         "rm" => rm::invoke(args, ctx).await?,
+        "rmdir" => rmdir::invoke(args, ctx).await?,
         "touch" => touch::invoke(args, ctx).await?,
         "tree" => tree::invoke(args, ctx).await?,
         cmd => bail!("Unrecognized command {}", cmd),
