@@ -6,7 +6,7 @@ use crate::{context::Context, path::VirtualPathBuf};
 #[derive(Parser)]
 #[command(bin_name = "touch")]
 struct Args {
-    #[arg(default_value = ".")]
+    #[arg(default_value = ".", help = "The resource to create")]
     path: VirtualPathBuf,
 }
 

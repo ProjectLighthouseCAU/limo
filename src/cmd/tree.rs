@@ -7,7 +7,7 @@ use crate::{context::Context, path::VirtualPathBuf};
 #[derive(Parser)]
 #[command(bin_name = "tree")]
 struct Args {
-    #[arg(default_value = ".")]
+    #[arg(default_value = ".", help = "The directory to list")]
     path: VirtualPathBuf,
 }
 

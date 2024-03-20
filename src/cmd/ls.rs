@@ -9,7 +9,7 @@ struct Args {
     #[arg(short, long, action, help = "Use a long listing format")]
     long: bool,
 
-    #[arg(default_value = ".")]
+    #[arg(default_value = ".", help = "The directory to list")]
     path: VirtualPathBuf,
 }
 
