@@ -51,14 +51,14 @@ fn print_tree(name: &str, tree: Option<&DirectoryTree>, indent: &str, branch_ind
 
 struct Stats {
     directory_count: usize,
-    file_count: usize,
+    resource_count: usize,
 }
 
 impl Default for Stats {
     fn default() -> Self {
         Self {
             directory_count: 0,
-            file_count: 0,
+            resource_count: 0,
         }
     }
 }
@@ -69,7 +69,7 @@ impl Add for Stats {
     fn add(self, rhs: Self) -> Self::Output {
         Self {
             directory_count: self.directory_count + rhs.directory_count,
-            file_count: self.file_count + rhs.file_count,
+            resource_count: self.resource_count + rhs.resource_count,
         }
     }
 }
@@ -81,7 +81,7 @@ impl From<&DirectoryTree> for Stats {
                 if let Some(child) = child {
                     Self::from(child)
                 } else {
-                    Self { file_count: 1, ..Default::default() }
+                    Self { resource_count: 1, ..Default::default() }
                 }
             })
             .reduce(Add::add)
@@ -99,10 +99,10 @@ impl fmt::Display for Stats {
             write!(f, "{} directories", self.directory_count)?;
         }
         write!(f, ", ")?;
-        if self.file_count == 1 {
-            write!(f, "{} file", self.file_count)?;
+        if self.resource_count == 1 {
+            write!(f, "{} resource", self.resource_count)?;
         } else {
-            write!(f, "{} files", self.file_count)?;
+            write!(f, "{} resources", self.resource_count)?;
         }
         Ok(())
     }
