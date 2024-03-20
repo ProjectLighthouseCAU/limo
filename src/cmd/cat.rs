@@ -7,7 +7,7 @@ use crate::{context::Context, path::VirtualPathBuf};
 #[derive(Parser)]
 #[command(bin_name = "cat")]
 struct Args {
-    #[arg(default_value = "")]
+    #[arg(default_value = ".")]
     path: VirtualPathBuf,
 }
 
