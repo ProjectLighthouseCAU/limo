@@ -25,6 +25,7 @@ cmd_mods!(
     ln,
     ls,
     mkdir,
+    mv,
     pwd,
     rm,
     rmdir,
