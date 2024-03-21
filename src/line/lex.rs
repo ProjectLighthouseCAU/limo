@@ -6,7 +6,7 @@ const REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(&[
     r"'(?<singlequoted>[^']*)'",
     r#""(?<doublequoted>[^"]*)""#,
     r#"(?<strayquotes>['"]+)"#,
-    r#"(?<unquoted>[^'"\s]+)"#,
+    r#"(?<unquoted>[^'">\s]+)"#,
 ].join("|")).unwrap());
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,5 +72,16 @@ mod tests {
         assert_eq!(lex(r#"echo "Hello world   1234"#), vec![arg("echo"), invalid("\""), arg("Hello"), arg("world"), arg("1234")]);
         // TODO: Should we parse adjacent stuff as one arg?
         assert_eq!(lex(r#"echo '"Hello 'world   1234"#), vec![arg("echo"), arg("\"Hello "), arg("world"), arg("1234")]);
+    }
+
+    #[test]
+    fn redirects() {
+        assert_eq!(lex(">"), vec![redirect()]);
+        assert_eq!(lex(">>"), vec![redirect(), redirect()]);
+        assert_eq!(lex(">a"), vec![redirect(), arg("a")]);
+        assert_eq!(lex(">1"), vec![redirect(), arg("1")]);
+        assert_eq!(lex("  >0>  1"), vec![redirect(), arg("0"), redirect(), arg("1")]);
+        assert_eq!(lex("echo Test > a"), vec![arg("echo"), arg("Test"), redirect(), arg("a")]);
+        assert_eq!(lex(r#"echo '{"x": 23,"y":3}' > /dev/null"#), vec![arg("echo"), arg(r#"{"x": 23,"y":3}"#), redirect(), arg("/dev/null")])
     }
 }
