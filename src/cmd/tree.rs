@@ -6,7 +6,7 @@ use clap::Parser;
 use colored::Colorize;
 use lighthouse_client::protocol::DirectoryTree;
 
-use crate::{context::Context, path::VirtualPathBuf};
+use crate::{context::Context, path::{VirtualPath, VirtualPathBuf}};
 
 #[derive(Parser)]
 #[command(bin_name = "tree")]
@@ -15,26 +15,41 @@ struct Args {
     path: VirtualPathBuf,
 }
 
-pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<()> {
+pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
     let args = Args::try_parse_from(args)?;
     let path = ctx.cwd.join(args.path);
 
     let tree = ctx.lh.list(&path.as_lh_vec()).await?.payload;
-    print_tree(&format!("{}", ctx.cwd), Some(&tree), "", "");
 
-    let stats = Stats::from(&tree);
-    println!();
-    println!("{}", stats);
-
-    Ok(())
+    Ok(format!("{}", TreeListing {
+        tree,
+        cwd: &ctx.cwd,
+    }))
 }
 
-fn print_tree(name: &str, tree: Option<&DirectoryTree>, indent: &str, branch_indent: &str) {
-    print!("{}", indent);
+struct TreeListing<'a> {
+    tree: DirectoryTree,
+    cwd: &'a VirtualPath,
+}
+
+impl<'a> fmt::Display for TreeListing<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write_tree(f, &format!("{}", self.cwd), Some(&self.tree), "", "")?;
+
+        let stats = Stats::from(&self.tree);
+        writeln!(f)?;
+        writeln!(f, "{}", stats)?;
+        
+        Ok(())
+    }
+}
+
+fn write_tree(f: &mut fmt::Formatter<'_>, name: &str, tree: Option<&DirectoryTree>, indent: &str, branch_indent: &str) -> fmt::Result {
+    write!(f, "{}", indent)?;
     if tree.is_some() {
-        println!("{}", name.blue());
+        writeln!(f, "{}", name.blue())?;
     } else {
-        println!("{}", name);
+        writeln!(f, "{}", name)?;
     }
     if let Some(tree) = tree {
         let mut entries: Vec<_> = tree.entries.iter().collect();
@@ -46,9 +61,10 @@ fn print_tree(name: &str, tree: Option<&DirectoryTree>, indent: &str, branch_ind
             } else {
                 (format!("{}└── ", branch_indent), format!("{}    ", branch_indent))
             };
-            print_tree(child_name, child.as_ref(), &child_indent, &child_branch_indent);
+            write_tree(f, child_name, child.as_ref(), &child_indent, &child_branch_indent)?;
         }
     }
+    Ok(())
 }
 
 struct Stats {

@@ -19,7 +19,7 @@ struct Args {
     path: VirtualPathBuf,
 }
 
-pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<()> {
+pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
     let args = Args::try_parse_from(args)?;
     let path = ctx.cwd.join(args.path);
     let response = ctx.lh.list(&path.as_lh_vec()).await?;
@@ -34,16 +34,30 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<()> {
 
     entries.sort();
 
-    if args.long {
-        // TODO: Print more metadata
-        for entry in entries {
-            println!("{}", entry);
-        }
-    } else {
-        println!("{}", entries.into_iter().map(|e| format!("{}", e)).collect::<Vec<_>>().join("   "));
-    }
+    Ok(format!("{}", Listing {
+        long: args.long,
+        entries,
+    }))
+}
 
-    Ok(())
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Listing {
+    long: bool,
+    entries: Vec<Entry>,
+}
+
+impl fmt::Display for Listing {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.long {
+            // TODO: Print more metadata
+            for entry in &self.entries {
+                writeln!(f, "{}", entry)?;
+            }
+        } else {
+            writeln!(f, "{}", self.entries.iter().map(|e| format!("{}", e)).collect::<Vec<_>>().join("   "))?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

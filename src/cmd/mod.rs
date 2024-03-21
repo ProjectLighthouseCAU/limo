@@ -6,13 +6,12 @@ macro_rules! cmd_mods {
     ($($mod:ident),* $(,)?) => {
         $(mod $mod;)*
 
-        pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<()> {
-            match args[0].as_str() {
+        pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
+            Ok(match args[0].as_str() {
                 $(stringify!($mod) => $mod::invoke(args, ctx).await?,)*
-                "help" => println!("Available commands: {}", [$(stringify!($mod),)*].join(", ")),
+                "help" => bail!("Available commands: {}", [$(stringify!($mod),)*].join(", ")),
                 cmd => bail!("Unrecognized command: {}", cmd),
-            }
-            Ok(())
+            })
         }
     };
 }
