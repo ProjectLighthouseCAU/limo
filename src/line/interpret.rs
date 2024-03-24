@@ -76,6 +76,12 @@ async fn evaluate_argument(arg: Argument, ctx: &mut Context) -> Result<String> {
 async fn evaluate_fragment(fragment: Fragment, ctx: &mut Context) -> Result<String> {
     match fragment {
         Fragment::Literal(lit) => Ok(lit),
-        _ => todo!()
+        Fragment::Variable(variable) => {
+            let Some(value) = ctx.variables.get(&variable) else {
+                bail!("Unbound variable: {}", variable)
+            };
+            Ok(value.to_owned())
+        },
+        Fragment::Command(command) => Ok(interpret_command(command, ctx).await?.output),
     }
 }

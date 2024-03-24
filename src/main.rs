@@ -3,6 +3,8 @@ mod context;
 mod line;
 mod path;
 
+use std::collections::HashMap;
+
 use anyhow::Result;
 use clap::Parser;
 use lighthouse_client::{protocol::Authentication, Lighthouse, LIGHTHOUSE_URL};
@@ -47,6 +49,7 @@ async fn main() -> Result<()> {
     let ctx = Context {
         lh: Lighthouse::connect_with_tokio_to(&args.url, auth).await?,
         cwd: VirtualPathBuf::root(),
+        variables: HashMap::new(),
         host: host.to_string(),
         username: args.username,
     };
