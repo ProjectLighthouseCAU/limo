@@ -1,48 +1,63 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-const REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(&[
-    r"(?<redirect>>)",
-    r"'(?<singlequoted>[^']*)'",
-    r#""(?<doublequoted>[^"]*)""#,
-    r#"(?<strayquotes>['"]+)"#,
-    r#"(?<unquoted>[^'">\s]+)"#,
-].join("|")).unwrap());
+macro_rules! lexer {
+    ($(($op_name_upper:ident, $op_name_lower:ident, $op_regex:literal)),* $(,)?) => {
+        const REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(&[
+            $(concat!(r"(?<op_", stringify!($op_name_lower), ">", $op_regex, ")"),)*
+            r"'(?<singlequoted>[^']*)'",
+            r#""(?<doublequoted>[^"]*)""#,
+            r#"(?<strayquotes>['"]+)"#,
+            r#"(?<unquoted>[^'">\s]+)"#,
+        ].join("|")).unwrap());
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Token {
-    Redirect,
-    Arg(String),
-    Invalid(String),
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        pub enum Token {
+            $($op_name_upper,)*
+            Arg(String),
+            Invalid(String),
+        }
+
+        pub fn lex(line: &str) -> Vec<Token> {
+            REGEX.captures_iter(line).map(|c| {
+                if let Some(arg) = c.name("singlequoted").or(c.name("doublequoted")).or(c.name("unquoted")) {
+                    Token::Arg(arg.as_str().to_owned())
+                } $(else if c.name(concat!("op_", stringify!($op_name_lower))).is_some() {
+                    Token::$op_name_upper
+                })* else {
+                    Token::Invalid(c[0].to_owned())
+                }
+            }).collect()
+        }       
+
+        // Convenience functions for testing
+
+        $(
+            #[cfg(test)]
+            fn $op_name_lower() -> Token {
+                Token::$op_name_upper
+            }
+        )*
+
+        #[cfg(test)]
+        fn arg(s: &str) -> Token {
+            Token::Arg(s.to_owned())
+        }
+
+        #[cfg(test)]
+        fn invalid(s: &str) -> Token {
+            Token::Invalid(s.to_owned())
+        }
+    };
 }
 
-pub fn lex(line: &str) -> Vec<Token> {
-    REGEX.captures_iter(line).map(|c| {
-        if c.name("redirect").is_some() {
-            Token::Redirect
-        } else if let Some(arg) = c.name("singlequoted").or(c.name("doublequoted")).or(c.name("unquoted")) {
-            Token::Arg(arg.as_str().to_owned())
-        } else {
-            Token::Invalid(c[0].to_owned())
-        }
-    }).collect()
+lexer! {
+    (Redirect, redirect, ">"),
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::line::lex::{lex, Token};
-
-    fn redirect() -> Token {
-        Token::Redirect
-    }
-
-    fn arg(s: &str) -> Token {
-        Token::Arg(s.to_owned())
-    }
-
-    fn invalid(s: &str) -> Token {
-        Token::Invalid(s.to_owned())
-    }
+    use crate::line::lex::{arg, invalid, lex, redirect};
 
     #[test]
     fn whitespace() {
