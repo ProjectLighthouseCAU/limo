@@ -63,8 +63,8 @@ mod tests {
 
     use super::Statement;
 
-    fn parse(line: &str) -> Statement {
-        Result::<Statement>::from_iter(lex(line)).unwrap()
+    fn parse(line: &str) -> Result<Statement> {
+        Result::<Statement>::from_iter(lex(line))
     }
 
     fn invocation(args: &[&str], redirect: Option<&str>) -> Statement {
@@ -76,24 +76,33 @@ mod tests {
 
     #[test]
     fn whitespace() {
-        assert_eq!(parse(""), invocation(&[], None));
-        assert_eq!(parse("  "), invocation(&[], None));
+        assert_eq!(parse("").unwrap(), invocation(&[], None));
+        assert_eq!(parse("  ").unwrap(), invocation(&[], None));
     }
 
     #[test]
     fn simple_commands() {
-        assert_eq!(parse("echo"), invocation(&["echo"], None));
-        assert_eq!(parse("echo 123"), invocation(&["echo", "123"], None));
-        assert_eq!(parse("echo \"123\""), invocation(&["echo", "123"], None));
+        assert_eq!(parse("echo").unwrap(), invocation(&["echo"], None));
+        assert_eq!(parse("echo 123").unwrap(), invocation(&["echo", "123"], None));
+        assert_eq!(parse("echo \"123\"").unwrap(), invocation(&["echo", "123"], None));
     }
 
     #[test]
     fn redirects() {
-        assert_eq!(parse("cat hello >123"), invocation(&["cat", "hello"], Some("123")));
-        assert_eq!(parse("echo 123   > /dev/null"), invocation(&["echo", "123"], Some("/dev/null")));
-        assert_eq!(parse("\"\">a/b"), invocation(&[""], Some("a/b")));
-        assert_eq!(parse("\"\">a/b>c/d"), invocation(&[""], Some("c/d")));
-        assert_eq!(parse("\"\">a/b  > c/d"), invocation(&[""], Some("c/d")));
-        assert_eq!(parse(r#"echo '{"x": 23,"y":3}' > /dev/null"#), invocation(&["echo", "{\"x\": 23,\"y\":3}"], Some("/dev/null")));
+        assert_eq!(parse("cat hello >123").unwrap(), invocation(&["cat", "hello"], Some("123")));
+        assert_eq!(parse("echo 123   > /dev/null").unwrap(), invocation(&["echo", "123"], Some("/dev/null")));
+        assert_eq!(parse("\"\">a/b").unwrap(), invocation(&[""], Some("a/b")));
+        assert_eq!(parse("\"\">a/b>c/d").unwrap(), invocation(&[""], Some("c/d")));
+        assert_eq!(parse("\"\">a/b  > c/d").unwrap(), invocation(&[""], Some("c/d")));
+        assert_eq!(parse(r#"echo '{"x": 23,"y":3}' > /dev/null"#).unwrap(), invocation(&["echo", "{\"x\": 23,\"y\":3}"], Some("/dev/null")));
+    }
+
+    #[test]
+    fn quotes() {
+        assert!(parse("'").is_err());
+        assert!(parse(r#"""#).is_err());
+        assert!(parse(r#" "''  "" "#).is_err());
+        assert_eq!(parse("''").unwrap(), invocation(&[""], None));
+        assert_eq!(parse(r#" "''"  "" "#).unwrap(), invocation(&["''", ""], None));
     }
 }
