@@ -8,7 +8,7 @@ macro_rules! lexer {
             r"'(?<singlequoted>[^']*)'",
             r#""(?<doublequoted>[^"]*)""#,
             r#"(?<strayquotes>['"]+)"#,
-            r#"(?<unquoted>[^'">\s]+)"#,
+            concat!(r#"(?<unquoted>[^'""#, $($op_regex,)* r#"\s]+)"#),
         ].join("|")).unwrap());
 
         #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,11 +53,12 @@ macro_rules! lexer {
 
 lexer! {
     (Redirect, redirect, ">"),
+    (Assign, assign, "="),
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::line::lex::{arg, invalid, lex, redirect};
+    use crate::line::lex::{arg, assign, invalid, lex, redirect};
 
     #[test]
     fn whitespace() {
@@ -98,5 +99,14 @@ mod tests {
         assert_eq!(lex("  >0>  1"), vec![redirect(), arg("0"), redirect(), arg("1")]);
         assert_eq!(lex("echo Test > a"), vec![arg("echo"), arg("Test"), redirect(), arg("a")]);
         assert_eq!(lex(r#"echo '{"x": 23,"y":3}' > /dev/null"#), vec![arg("echo"), arg(r#"{"x": 23,"y":3}"#), redirect(), arg("/dev/null")])
+    }
+
+    #[test]
+    fn assignments() {
+        assert_eq!(lex(r#"hello="123""#), vec![arg("hello"), assign(), arg("123")]);
+        assert_eq!(lex(r#"hello  ="1""#), vec![arg("hello"), assign(), arg("1")]);
+        assert_eq!(lex(r#"hello = "1""#), vec![arg("hello"), assign(), arg("1")]);
+        assert_eq!(lex(r#"hello='"123"'"#), vec![arg("hello"), assign(), arg("\"123\"")]);
+        assert_eq!(lex(r#"hello'="123"'"#), vec![arg("hello"), arg("=\"123\"")]);
     }
 }
