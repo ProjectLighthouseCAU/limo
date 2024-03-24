@@ -16,7 +16,7 @@ macro_rules! cmd_mods {
     };
 }
 
-cmd_mods!(
+cmd_mods! {
     cat,
     cd,
     cp,
@@ -31,4 +31,4 @@ cmd_mods!(
     touch,
     tree,
     uln,
-);
+}
