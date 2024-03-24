@@ -58,7 +58,7 @@ lexer! {
 
 #[cfg(test)]
 mod tests {
-    use crate::line::lex::{arg, assign, invalid, lex, redirect};
+    use super::{arg, assign, invalid, lex, redirect};
 
     #[test]
     fn whitespace() {
