@@ -3,6 +3,7 @@ use multipeek::{IteratorExt, MultiPeek};
 
 use super::lex::Token;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement {
     Assignment { lhs: String, rhs: String },
     Invocation { args: Vec<String>, redirect: Option<String> },
@@ -52,4 +53,47 @@ fn parse_invocation<T>(tokens: &mut MultiPeek<T>) -> Result<Statement> where T: 
     }
 
     Ok(Statement::Invocation { args, redirect })
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+
+    use crate::line::lex::lex;
+
+    use super::Statement;
+
+    fn parse(line: &str) -> Statement {
+        Result::<Statement>::from_iter(lex(line)).unwrap()
+    }
+
+    fn invocation(args: &[&str], redirect: Option<&str>) -> Statement {
+        Statement::Invocation {
+            args: args.into_iter().map(|&s| s.to_owned()).collect(),
+            redirect: redirect.map(|s| s.to_owned())
+        }
+    }
+
+    #[test]
+    fn whitespace() {
+        assert_eq!(parse(""), invocation(&[], None));
+        assert_eq!(parse("  "), invocation(&[], None));
+    }
+
+    #[test]
+    fn simple_commands() {
+        assert_eq!(parse("echo"), invocation(&["echo"], None));
+        assert_eq!(parse("echo 123"), invocation(&["echo", "123"], None));
+        assert_eq!(parse("echo \"123\""), invocation(&["echo", "123"], None));
+    }
+
+    #[test]
+    fn redirects() {
+        assert_eq!(parse("cat hello >123"), invocation(&["cat", "hello"], Some("123")));
+        assert_eq!(parse("echo 123   > /dev/null"), invocation(&["echo", "123"], Some("/dev/null")));
+        assert_eq!(parse("\"\">a/b"), invocation(&[""], Some("a/b")));
+        assert_eq!(parse("\"\">a/b>c/d"), invocation(&[""], Some("c/d")));
+        assert_eq!(parse("\"\">a/b  > c/d"), invocation(&[""], Some("c/d")));
+        assert_eq!(parse(r#"echo '{"x": 23,"y":3}' > /dev/null"#), invocation(&["echo", "{\"x\": 23,\"y\":3}"], Some("/dev/null")));
+    }
 }
