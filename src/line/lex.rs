@@ -14,14 +14,14 @@ macro_rules! lexer {
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub enum Token {
             $($op_name_upper,)*
-            Arg(String),
+            String(String),
             Invalid(String),
         }
 
         pub fn lex(line: &str) -> Vec<Token> {
             REGEX.captures_iter(line).map(|c| {
-                if let Some(arg) = c.name("singlequoted").or(c.name("doublequoted")).or(c.name("unquoted")) {
-                    Token::Arg(arg.as_str().to_owned())
+                if let Some(string) = c.name("singlequoted").or(c.name("doublequoted")).or(c.name("unquoted")) {
+                    Token::String(string.as_str().to_owned())
                 } $(else if c.name(concat!("op_", stringify!($op_name_lower))).is_some() {
                     Token::$op_name_upper
                 })* else {
@@ -40,8 +40,8 @@ macro_rules! lexer {
         )*
 
         #[cfg(test)]
-        fn arg(s: &str) -> Token {
-            Token::Arg(s.to_owned())
+        fn string(s: &str) -> Token {
+            Token::String(s.to_owned())
         }
 
         #[cfg(test)]
@@ -58,7 +58,7 @@ lexer! {
 
 #[cfg(test)]
 mod tests {
-    use super::{arg, assign, invalid, lex, redirect};
+    use super::{string, assign, invalid, lex, redirect};
 
     #[test]
     fn whitespace() {
@@ -68,45 +68,45 @@ mod tests {
 
     #[test]
     fn simple_commands() {
-        assert_eq!(lex("ls"), vec![arg("ls")]);
-        assert_eq!(lex("ls /"), vec![arg("ls"), arg("/")]);
-        assert_eq!(lex("ls hello"), vec![arg("ls"), arg("hello")]);
-        assert_eq!(lex("ls /hello/ world"), vec![arg("ls"), arg("/hello/"), arg("world")]);
-        assert_eq!(lex(" ls / "), vec![arg("ls"), arg("/")]);
-        assert_eq!(lex(" pwd"), vec![arg("pwd")]);
-        assert_eq!(lex("echo Hello world123 !"), vec![arg("echo"), arg("Hello"), arg("world123"), arg("!")]);
+        assert_eq!(lex("ls"), vec![string("ls")]);
+        assert_eq!(lex("ls /"), vec![string("ls"), string("/")]);
+        assert_eq!(lex("ls hello"), vec![string("ls"), string("hello")]);
+        assert_eq!(lex("ls /hello/ world"), vec![string("ls"), string("/hello/"), string("world")]);
+        assert_eq!(lex(" ls / "), vec![string("ls"), string("/")]);
+        assert_eq!(lex(" pwd"), vec![string("pwd")]);
+        assert_eq!(lex("echo Hello world123 !"), vec![string("echo"), string("Hello"), string("world123"), string("!")]);
     }
 
     #[test]
     fn quotes() {
-        assert_eq!(lex("''"), vec![arg("")]);
-        assert_eq!(lex(r#""""#), vec![arg("")]);
-        assert_eq!(lex(r#" """"  "" "#), vec![arg(""), arg(""), arg("")]);
-        assert_eq!(lex(r#" "''"  "" "#), vec![arg("''"), arg("")]);
-        assert_eq!(lex(r#" "''  "" "#), vec![arg("''  "), invalid("\"")]);
-        assert_eq!(lex(r#"echo "Hello world "  1234"#), vec![arg("echo"), arg("Hello world "), arg("1234")]);
-        assert_eq!(lex(r#"echo "Hello world   1234"#), vec![arg("echo"), invalid("\""), arg("Hello"), arg("world"), arg("1234")]);
-        // TODO: Should we parse adjacent stuff as one arg?
-        assert_eq!(lex(r#"echo '"Hello 'world   1234"#), vec![arg("echo"), arg("\"Hello "), arg("world"), arg("1234")]);
+        assert_eq!(lex("''"), vec![string("")]);
+        assert_eq!(lex(r#""""#), vec![string("")]);
+        assert_eq!(lex(r#" """"  "" "#), vec![string(""), string(""), string("")]);
+        assert_eq!(lex(r#" "''"  "" "#), vec![string("''"), string("")]);
+        assert_eq!(lex(r#" "''  "" "#), vec![string("''  "), invalid("\"")]);
+        assert_eq!(lex(r#"echo "Hello world "  1234"#), vec![string("echo"), string("Hello world "), string("1234")]);
+        assert_eq!(lex(r#"echo "Hello world   1234"#), vec![string("echo"), invalid("\""), string("Hello"), string("world"), string("1234")]);
+        // TODO: Should we parse adjacent stuff as one string?
+        assert_eq!(lex(r#"echo '"Hello 'world   1234"#), vec![string("echo"), string("\"Hello "), string("world"), string("1234")]);
     }
 
     #[test]
     fn redirects() {
         assert_eq!(lex(">"), vec![redirect()]);
         assert_eq!(lex(">>"), vec![redirect(), redirect()]);
-        assert_eq!(lex(">a"), vec![redirect(), arg("a")]);
-        assert_eq!(lex(">1"), vec![redirect(), arg("1")]);
-        assert_eq!(lex("  >0>  1"), vec![redirect(), arg("0"), redirect(), arg("1")]);
-        assert_eq!(lex("echo Test > a"), vec![arg("echo"), arg("Test"), redirect(), arg("a")]);
-        assert_eq!(lex(r#"echo '{"x": 23,"y":3}' > /dev/null"#), vec![arg("echo"), arg(r#"{"x": 23,"y":3}"#), redirect(), arg("/dev/null")])
+        assert_eq!(lex(">a"), vec![redirect(), string("a")]);
+        assert_eq!(lex(">1"), vec![redirect(), string("1")]);
+        assert_eq!(lex("  >0>  1"), vec![redirect(), string("0"), redirect(), string("1")]);
+        assert_eq!(lex("echo Test > a"), vec![string("echo"), string("Test"), redirect(), string("a")]);
+        assert_eq!(lex(r#"echo '{"x": 23,"y":3}' > /dev/null"#), vec![string("echo"), string(r#"{"x": 23,"y":3}"#), redirect(), string("/dev/null")])
     }
 
     #[test]
     fn assignments() {
-        assert_eq!(lex(r#"hello="123""#), vec![arg("hello"), assign(), arg("123")]);
-        assert_eq!(lex(r#"hello  ="1""#), vec![arg("hello"), assign(), arg("1")]);
-        assert_eq!(lex(r#"hello = "1""#), vec![arg("hello"), assign(), arg("1")]);
-        assert_eq!(lex(r#"hello='"123"'"#), vec![arg("hello"), assign(), arg("\"123\"")]);
-        assert_eq!(lex(r#"hello'="123"'"#), vec![arg("hello"), arg("=\"123\"")]);
+        assert_eq!(lex(r#"hello="123""#), vec![string("hello"), assign(), string("123")]);
+        assert_eq!(lex(r#"hello  ="1""#), vec![string("hello"), assign(), string("1")]);
+        assert_eq!(lex(r#"hello = "1""#), vec![string("hello"), assign(), string("1")]);
+        assert_eq!(lex(r#"hello='"123"'"#), vec![string("hello"), assign(), string("\"123\"")]);
+        assert_eq!(lex(r#"hello'="123"'"#), vec![string("hello"), string("=\"123\"")]);
     }
 }

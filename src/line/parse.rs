@@ -62,13 +62,13 @@ fn parse_statement<T>(tokens: &mut MultiPeek<T>) -> Result<Statement> where T: I
 }
 
 fn parse_assignment<T>(tokens: &mut MultiPeek<T>) -> Result<Assignment> where T: Iterator<Item = Token> {
-    let Some(Token::Arg(lhs)) = tokens.peek_nth(0).cloned() else {
+    let Some(Token::String(lhs)) = tokens.peek_nth(0).cloned() else {
         bail!("Parse error: Expected variable name in assignment");
     };
     let Some(Token::Assign) = tokens.peek_nth(1) else {
         bail!("Parse error: Expected operator (=) in assignment");
     };
-    let Some(Token::Arg(rhs)) = tokens.peek_nth(2).cloned() else {
+    let Some(Token::String(rhs)) = tokens.peek_nth(2).cloned() else {
         bail!("Parse error: Expected variable name in assignment");
     };
     let rhs = parse_argument(&rhs)?;
@@ -82,7 +82,7 @@ fn parse_command<T>(tokens: &mut MultiPeek<T>) -> Result<Command> where T: Itera
 
     while let Some(token) = tokens.peek().cloned() {
         match token {
-            Token::Arg(arg) => {
+            Token::String(arg) => {
                 tokens.next();
                 let arg = parse_argument(&arg)?;
                 if in_redirect {
