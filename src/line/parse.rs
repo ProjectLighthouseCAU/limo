@@ -3,23 +3,23 @@ use multipeek::{IteratorExt, MultiPeek};
 
 use super::lex::Token;
 
-pub enum Line {
+pub enum Statement {
     Assignment { lhs: String, rhs: String },
     Invocation { args: Vec<String>, redirect: Option<String> },
 }
 
-impl FromIterator<Token> for Result<Line> {
-    fn from_iter<T>(iter: T) -> Result<Line> where T: IntoIterator<Item = Token> {
-        parse_line(&mut iter.into_iter().multipeek())
+impl FromIterator<Token> for Result<Statement> {
+    fn from_iter<T>(iter: T) -> Result<Statement> where T: IntoIterator<Item = Token> {
+        parse_statement(&mut iter.into_iter().multipeek())
         
     }
 }
 
-fn parse_line<T>(tokens: &mut MultiPeek<T>) -> Result<Line> where T: Iterator<Item = Token> {
+fn parse_statement<T>(tokens: &mut MultiPeek<T>) -> Result<Statement> where T: Iterator<Item = Token> {
     parse_assignment(tokens).or_else(|_| parse_invocation(tokens))
 }
 
-fn parse_assignment<T>(tokens: &mut MultiPeek<T>) -> Result<Line> where T: Iterator<Item = Token> {
+fn parse_assignment<T>(tokens: &mut MultiPeek<T>) -> Result<Statement> where T: Iterator<Item = Token> {
     let Some(Token::Arg(lhs)) = tokens.peek_nth(0).cloned() else {
         bail!("Parse error: Expected variable name in assignment");
     };
@@ -29,10 +29,10 @@ fn parse_assignment<T>(tokens: &mut MultiPeek<T>) -> Result<Line> where T: Itera
     let Some(Token::Arg(rhs)) = tokens.peek_nth(2).cloned() else {
         bail!("Parse error: Expected variable name in assignment");
     };
-    Ok(Line::Assignment { lhs, rhs })
+    Ok(Statement::Assignment { lhs, rhs })
 }
 
-fn parse_invocation<T>(tokens: &mut MultiPeek<T>) -> Result<Line> where T: Iterator<Item = Token> {
+fn parse_invocation<T>(tokens: &mut MultiPeek<T>) -> Result<Statement> where T: Iterator<Item = Token> {
     let mut args = Vec::new();
     let mut redirect = None;
     let mut in_redirect = false;
@@ -51,5 +51,5 @@ fn parse_invocation<T>(tokens: &mut MultiPeek<T>) -> Result<Line> where T: Itera
         }
     }
 
-    Ok(Line::Invocation { args, redirect })
+    Ok(Statement::Invocation { args, redirect })
 }

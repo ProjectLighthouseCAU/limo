@@ -3,14 +3,14 @@ use lighthouse_client::protocol::{to_value, Value};
 
 use crate::{cmd, context::Context, path::VirtualPathBuf};
 
-use super::parse::Line;
+use super::parse::Statement;
 
-pub async fn interpret(line: Line, ctx: &mut Context) -> Result<()> {
-    match line {
-        Line::Assignment { lhs, rhs } => {
+pub async fn interpret(stmt: Statement, ctx: &mut Context) -> Result<()> {
+    match stmt {
+        Statement::Assignment { lhs, rhs } => {
             todo!()
         },
-        Line::Invocation { args, redirect } => {
+        Statement::Invocation { args, redirect } => {
             if args.is_empty() {
                 bail!("Cannot interpret empty invocation");
             }
