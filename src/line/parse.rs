@@ -1,12 +1,46 @@
 use anyhow::{bail, Result};
 use multipeek::{IteratorExt, MultiPeek};
 
-use super::lex::Token;
+use super::lex::{lex, Token};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Fragment {
+    /// A literal string fragment.
+    Literal(String),
+    /// A variable substitution of the form $var
+    Variable(String),
+    /// A cmd substitution of the form $(...)
+    Command(Command),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Argument {
+    /// The fragments of the potentially interpolated string.
+    pub fragments: Vec<Fragment>
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Assignment {
+    /// The variable name.
+    pub lhs: String,
+    /// The assigned value.
+    pub rhs: Argument,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Command {
+    Invocation { args: Vec<Argument> },
+    Redirect { inner: Box<Command>, path: Argument },
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement {
-    Assignment { lhs: String, rhs: String },
-    Invocation { args: Vec<String>, redirect: Option<String> },
+    Assignment(Assignment),
+    Command(Command),
+}
+
+pub fn parse(line: &str) -> Result<Statement> {
+    Result::<Statement>::from_iter(lex(line))
 }
 
 impl FromIterator<Token> for Result<Statement> {
@@ -17,10 +51,12 @@ impl FromIterator<Token> for Result<Statement> {
 }
 
 fn parse_statement<T>(tokens: &mut MultiPeek<T>) -> Result<Statement> where T: Iterator<Item = Token> {
-    parse_assignment(tokens).or_else(|_| parse_invocation(tokens))
+    parse_assignment(tokens)
+        .map(|a| Statement::Assignment(a))
+        .or_else(|_| parse_command(tokens).map(|c| Statement::Command(c)))
 }
 
-fn parse_assignment<T>(tokens: &mut MultiPeek<T>) -> Result<Statement> where T: Iterator<Item = Token> {
+fn parse_assignment<T>(tokens: &mut MultiPeek<T>) -> Result<Assignment> where T: Iterator<Item = Token> {
     let Some(Token::Arg(lhs)) = tokens.peek_nth(0).cloned() else {
         bail!("Parse error: Expected variable name in assignment");
     };
@@ -30,71 +66,119 @@ fn parse_assignment<T>(tokens: &mut MultiPeek<T>) -> Result<Statement> where T: 
     let Some(Token::Arg(rhs)) = tokens.peek_nth(2).cloned() else {
         bail!("Parse error: Expected variable name in assignment");
     };
-    Ok(Statement::Assignment { lhs, rhs })
+    let rhs = parse_argument(&rhs)?;
+    Ok(Assignment { lhs, rhs })
 }
 
-fn parse_invocation<T>(tokens: &mut MultiPeek<T>) -> Result<Statement> where T: Iterator<Item = Token> {
-    let mut args = Vec::new();
-    let mut redirect = None;
+fn parse_command<T>(tokens: &mut MultiPeek<T>) -> Result<Command> where T: Iterator<Item = Token> {
+    let mut args = Vec::<Argument>::new();
+    let mut redirects = Vec::<Argument>::new();
     let mut in_redirect = false;
 
-    for token in tokens {
+    while let Some(token) = tokens.peek().cloned() {
         match token {
             Token::Arg(arg) => {
+                tokens.next();
+                let arg = parse_argument(&arg)?;
                 if in_redirect {
-                    redirect = Some(arg);
+                    redirects.push(arg);
                 } else {
                     args.push(arg);
                 }
             },
-            Token::Redirect => in_redirect = true,
+            Token::Redirect => {
+                tokens.next();
+                in_redirect = true
+            },
             _ => bail!("Parse error: Unexpected {:?} in invocation, did you close your quotes?", token)
         }
     }
 
-    Ok(Statement::Invocation { args, redirect })
+    Ok(redirects.into_iter().fold(
+        Command::Invocation { args },
+        |inner, path| {
+            Command::Redirect { inner: Box::new(inner), path }
+        }
+    ))
+}
+
+fn parse_argument(arg: &str) -> Result<Argument> {
+    // TODO
+    let fragments = vec![Fragment::Literal(arg.to_owned())];
+    Ok(Argument { fragments })
 }
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
+    use super::{parse, Argument, Command, Fragment, Statement};
 
-    use crate::line::lex::lex;
-
-    use super::Statement;
-
-    fn parse(line: &str) -> Result<Statement> {
-        Result::<Statement>::from_iter(lex(line))
+    fn lit(value: &str) -> Fragment {
+        Fragment::Literal(value.to_owned())
     }
 
-    fn invocation(args: &[&str], redirect: Option<&str>) -> Statement {
-        Statement::Invocation {
-            args: args.into_iter().map(|&s| s.to_owned()).collect(),
-            redirect: redirect.map(|s| s.to_owned())
-        }
+    fn arg(fragments: impl IntoIterator<Item = Fragment>) -> Argument {
+        Argument { fragments: fragments.into_iter().collect() }
+    }
+
+    fn invocation(args: impl IntoIterator<Item = Argument>) -> Command {
+        Command::Invocation { args: args.into_iter().collect() }
+    }
+
+    fn redirect(command: Command, path: Argument) -> Command {
+        Command::Redirect { inner: Box::new(command), path }
+    }
+
+    fn lit_invocation(lits: impl IntoIterator<Item = &'static str>) -> Command {
+        invocation(lits.into_iter().map(|l| arg([lit(l)])))
+    }
+
+    fn lit_redirect(command: Command, path: &str) -> Command {
+        redirect(command, arg([lit(path)]))
+    }
+
+    fn cmd_stmt(command: Command) -> Statement {
+        Statement::Command(command)
     }
 
     #[test]
     fn whitespace() {
-        assert_eq!(parse("").unwrap(), invocation(&[], None));
-        assert_eq!(parse("  ").unwrap(), invocation(&[], None));
+        assert_eq!(parse("").unwrap(), cmd_stmt(lit_invocation([])));
+        assert_eq!(parse("  ").unwrap(), cmd_stmt(lit_invocation([])));
     }
 
     #[test]
     fn simple_commands() {
-        assert_eq!(parse("echo").unwrap(), invocation(&["echo"], None));
-        assert_eq!(parse("echo 123").unwrap(), invocation(&["echo", "123"], None));
-        assert_eq!(parse("echo \"123\"").unwrap(), invocation(&["echo", "123"], None));
+        assert_eq!(parse("echo").unwrap(), cmd_stmt(lit_invocation(["echo"])));
+        assert_eq!(parse("echo 123").unwrap(), cmd_stmt(lit_invocation(["echo", "123"])));
+        assert_eq!(parse("echo \"123\"").unwrap(), cmd_stmt(lit_invocation(["echo", "123"])));
     }
 
     #[test]
     fn redirects() {
-        assert_eq!(parse("cat hello >123").unwrap(), invocation(&["cat", "hello"], Some("123")));
-        assert_eq!(parse("echo 123   > /dev/null").unwrap(), invocation(&["echo", "123"], Some("/dev/null")));
-        assert_eq!(parse("\"\">a/b").unwrap(), invocation(&[""], Some("a/b")));
-        assert_eq!(parse("\"\">a/b>c/d").unwrap(), invocation(&[""], Some("c/d")));
-        assert_eq!(parse("\"\">a/b  > c/d").unwrap(), invocation(&[""], Some("c/d")));
-        assert_eq!(parse(r#"echo '{"x": 23,"y":3}' > /dev/null"#).unwrap(), invocation(&["echo", "{\"x\": 23,\"y\":3}"], Some("/dev/null")));
+        assert_eq!(
+            parse("cat hello >123").unwrap(),
+            cmd_stmt(lit_redirect(lit_invocation(["cat", "hello"]), "123"))
+        );
+        assert_eq!(
+            parse("echo 123   > /dev/null").unwrap(),
+            cmd_stmt(lit_redirect(lit_invocation(["echo", "123"]), "/dev/null"))
+        );
+        assert_eq!(
+            parse("\"\">a/b").unwrap(),
+            cmd_stmt(lit_redirect(lit_invocation([""]), "a/b"))
+        );
+        assert_eq!(
+            parse("\"\">a/b>c/d").unwrap(),
+            cmd_stmt(lit_redirect(lit_redirect(lit_invocation([""]), "a/b"), "c/d"))
+        );
+        assert_eq!(
+            parse("\"\">a/b  > c/d").unwrap(),
+            cmd_stmt(lit_redirect(lit_redirect(lit_invocation([""]), "a/b"), "c/d"))
+        );
+        assert_eq!(
+            parse(r#"echo '{"x": 23,"y":3}' > /dev/null"#).unwrap(),
+            cmd_stmt(lit_redirect(lit_invocation(["echo", "{\"x\": 23,\"y\":3}"]), "/dev/null"))
+        );
     }
 
     #[test]
@@ -102,7 +186,7 @@ mod tests {
         assert!(parse("'").is_err());
         assert!(parse(r#"""#).is_err());
         assert!(parse(r#" "''  "" "#).is_err());
-        assert_eq!(parse("''").unwrap(), invocation(&[""], None));
-        assert_eq!(parse(r#" "''"  "" "#).unwrap(), invocation(&["''", ""], None));
+        assert_eq!(parse("''").unwrap(), cmd_stmt(lit_invocation([""])));
+        assert_eq!(parse(r#" "''"  "" "#).unwrap(), cmd_stmt(lit_invocation(["''", ""])));
     }
 }

@@ -2,14 +2,13 @@ use anyhow::Result;
 
 use crate::context::Context;
 
-use self::{interpret::interpret, lex::lex, parse::Statement};
+use self::{interpret::interpret, parse::parse};
 
 mod interpret;
 mod lex;
 mod parse;
 
 pub async fn parse_interpret(line: &str, ctx: &mut Context) -> Result<()> {
-    let tokens = lex(line);
-    let stmt = Result::<Statement>::from_iter(tokens)?;
+    let stmt = parse(line)?;
     interpret(stmt, ctx).await
 }
