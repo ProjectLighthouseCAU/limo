@@ -3,6 +3,7 @@ use multipeek::{IteratorExt, MultiPeek};
 
 use super::lex::{lex, Token};
 
+/// A fragment of an argument (a string fragment after evaluation).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Fragment {
     /// A literal string fragment.
@@ -13,12 +14,14 @@ pub enum Fragment {
     Command(Command),
 }
 
+/// An argument, i.e. an unevaluated string.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Argument {
     /// The fragments of the potentially interpolated string.
     pub fragments: Vec<Fragment>
 }
 
+/// An variable assignment.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Assignment {
     /// The variable name.
@@ -27,12 +30,14 @@ pub struct Assignment {
     pub rhs: Argument,
 }
 
+/// A command "expression".
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
     Invocation { args: Vec<Argument> },
     Redirect { inner: Box<Command>, path: Argument },
 }
 
+/// A script statement.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement {
     Assignment(Assignment),
