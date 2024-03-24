@@ -4,13 +4,11 @@ use lighthouse_client::protocol::{to_value, Value};
 
 use crate::{cmd, context::Context, path::VirtualPathBuf};
 
-use super::parse::{Argument, Command, Fragment, Statement};
+use super::parse::{Argument, Assignment, Command, Fragment, Statement};
 
 pub async fn interpret(stmt: Statement, ctx: &mut Context) -> Result<()> {
     match stmt {
-        Statement::Assignment(_) => {
-            todo!()
-        },
+        Statement::Assignment(assignment) => interpret_assignment(assignment, ctx).await?,
         Statement::Command(command) => {
             let interpretation = interpret_command(command, ctx).await?;
             if !interpretation.redirected {
@@ -25,6 +23,12 @@ pub async fn interpret(stmt: Statement, ctx: &mut Context) -> Result<()> {
 struct Interpretation {
     output: String,
     redirected: bool,
+}
+
+async fn interpret_assignment(assignment: Assignment, ctx: &mut Context) -> Result<()> {
+    let rhs = evaluate_argument(assignment.rhs, ctx).await?;
+    ctx.variables.insert(assignment.lhs, rhs);
+    Ok(())
 }
 
 #[async_recursion]
