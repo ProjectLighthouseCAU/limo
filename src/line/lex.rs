@@ -74,6 +74,9 @@ pub enum Token {
     String(Vec<Segment>),
 }
 
+const INTERPOLATION_CHAR: char = '$';
+const ESCAPE_CHAR: char = '\\';
+
 /// Tokenizes the line. This handles quoting and removes whitespace.
 pub fn lex(line: &str) -> Result<Vec<Token>> {
     let mut tokens = Vec::<Token>::new();
@@ -97,9 +100,9 @@ pub fn lex(line: &str) -> Result<Vec<Token>> {
                 let Some(c) = it.next() else {
                     bail!("Unexpectedly reached end of {}-quoted string", quote);
                 };
-                if !is_escaped && c == '\\' {
+                if !is_escaped && c == ESCAPE_CHAR {
                     is_escaped = true;
-                } else if !is_escaped && !in_interpolation && quote == '"' && c == '$' {
+                } else if !is_escaped && !in_interpolation && quote == '"' && c == INTERPOLATION_CHAR {
                     // Entering interpolation
                     in_interpolation = true;
                     current.as_mut().unwrap().push(Segment::empty_variable());
@@ -127,8 +130,10 @@ pub fn lex(line: &str) -> Result<Vec<Token>> {
             if current.is_none() {
                 current = Some(vec![Segment::empty_literal()]);
             }
-            if let Some(current) = current.as_mut() {
-                current.last_mut().unwrap().text.push(c);
+            if c == INTERPOLATION_CHAR { // Unquoted interpolation
+                current.as_mut().unwrap().push(Segment::empty_variable());
+            } else {
+                current.as_mut().unwrap().last_mut().unwrap().text.push(c);
             }
         }
     }
@@ -211,6 +216,9 @@ mod tests {
 
     #[test]
     fn interpolations() {
+        assert_eq!(lex("$x").unwrap(), vec![string([lit(""), var("x")])]);
+        assert_eq!(lex("test$x").unwrap(), vec![string([lit("test"), var("x")])]);
+        assert_eq!(lex("test $x").unwrap(), vec![lit_string(["test"]), string([lit(""), var("x")])]);
         assert_eq!(lex("'test$x'").unwrap(), vec![lit_string(["test$x"])]);
         assert_eq!(lex(r#""$abc""#).unwrap(), vec![string([lit(""), var("abc"), lit("")])]);
         assert_eq!(lex(r#""test$x""#).unwrap(), vec![string([lit("test"), var("x"), lit("")])]);
