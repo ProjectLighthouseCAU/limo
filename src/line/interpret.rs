@@ -13,7 +13,10 @@ pub async fn interpret(stmt: Statement, ctx: &mut Context) -> Result<()> {
             let interpretation = interpret_command(command, ctx).await?;
             if !interpretation.redirected {
                 // Print output if not redirected
-                println!("{}", interpretation.output.trim());
+                let output = interpretation.output.trim();
+                if !output.is_empty() {
+                    println!("{}", output);
+                }
             }
         },
     }
