@@ -176,7 +176,11 @@ mod tests {
     #[test]
     fn interpolations() {
         assert_eq!(lex("'test$x'").unwrap(), vec![string(["test$x"])]);
+        assert_eq!(lex(r#""$abc""#).unwrap(), vec![string(["", "$abc", ""])]);
         assert_eq!(lex(r#""test$x""#).unwrap(), vec![string(["test", "$x", ""])]);
+        assert_eq!(lex(r#""$var_with_underscore abc""#).unwrap(), vec![string(["", "$var_with_underscore", " abc"])]);
+        assert_eq!(lex(r#""$var_with-hyphen""#).unwrap(), vec![string(["", "$var_with", "-hyphen"])]);
+        assert_eq!(lex(r#""/$var_with/slash""#).unwrap(), vec![string(["/", "$var_with", "/slash"])]);
     }
 
     #[test]
