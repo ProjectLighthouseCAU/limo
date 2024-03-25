@@ -59,8 +59,9 @@ pub fn lex(line: &str) -> Result<Vec<Token>> {
             current = None;
             tokens.push(Token::Operator(op));
         } else if c == '\'' || c == '"' { // (Opening) quote
-            // TODO: Escapes (and interpolations for "")
+            // TODO: Interpolations for "-quotes
             let quote = c;
+            let mut is_escaped = false;
             if current.is_none() {
                 current = Some(vec![String::new()]);
             }
@@ -68,11 +69,16 @@ pub fn lex(line: &str) -> Result<Vec<Token>> {
                 let Some(c) = it.next() else {
                     bail!("Unexpectedly reached end of {}-quoted string", quote);
                 };
-                if c == quote {
-                    break;
-                }
-                if let Some(current) = current.as_mut() {
-                    current.last_mut().unwrap().push(c);
+                if !is_escaped && c == '\\' {
+                    is_escaped = true;
+                } else {
+                    if !is_escaped && c == quote {
+                        break;
+                    }
+                    if let Some(current) = current.as_mut() {
+                        current.last_mut().unwrap().push(c);
+                    }
+                    is_escaped = false;
                 }
             }
         } else if c.is_whitespace() { // Whitespace
@@ -139,6 +145,20 @@ mod tests {
         assert_eq!(lex(r#"echo '"Hello 'world   1234"#).unwrap(), vec![string("echo"), string("\"Hello world"), string("1234")]);
         assert!(lex(r#" "''  "" "#).is_err());
         assert!(lex(r#"echo "Hello world   1234"#).is_err());
+    }
+
+    #[test]
+    fn escapes() {
+        assert!(lex("'''").is_err());
+        assert_eq!(lex(r#"'\''"#).unwrap(), vec![string("'")]);
+        assert_eq!(lex(r#""\'""#).unwrap(), vec![string("'")]);
+        assert_eq!(lex(r#"'\"'"#).unwrap(), vec![string("\"")]);
+        assert_eq!(lex(r#"Hello " \"world\"""#).unwrap(), vec![string("Hello"), string(" \"world\"")]);
+        assert_eq!(lex(r#""\\""#).unwrap(), vec![string("\\")]);
+        assert_eq!(lex(r#"'This\\\\is a double escape'"#).unwrap(), vec![string("This\\\\is a double escape")]);
+        assert!(lex(r#"'Unclosed: \\\'"#).is_err());
+        // TODO: We should handle backslashes outside quoted contexts too
+        assert_eq!(lex("\\").unwrap(), vec![string("\\")]);
     }
 
     #[test]
