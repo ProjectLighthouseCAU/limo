@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use multipeek::{IteratorExt, MultiPeek};
 
-use super::lex::{lex, Token};
+use super::lex::{lex, Operator, Token};
 
 /// A fragment of an argument (a string fragment after evaluation).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,7 +65,7 @@ fn parse_assignment<T>(tokens: &mut MultiPeek<T>) -> Result<Assignment> where T:
     let Some(Token::String(lhs)) = tokens.peek_nth(0).cloned() else {
         bail!("Parse error: Expected variable name in assignment");
     };
-    let Some(Token::Assign) = tokens.peek_nth(1) else {
+    let Some(Token::Operator(Operator::Assign)) = tokens.peek_nth(1) else {
         bail!("Parse error: Expected operator (=) in assignment");
     };
     let Some(Token::String(rhs)) = tokens.peek_nth(2).cloned() else {
@@ -92,7 +92,7 @@ fn parse_command<T>(tokens: &mut MultiPeek<T>) -> Result<Command> where T: Itera
                     args.push(arg);
                 }
             },
-            Token::Redirect => {
+            Token::Operator(Operator::Redirect) => {
                 tokens.next();
                 in_redirect = true
             },
