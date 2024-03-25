@@ -59,9 +59,10 @@ pub fn lex(line: &str) -> Result<Vec<Token>> {
             current = None;
             tokens.push(Token::Operator(op));
         } else if c == '\'' || c == '"' { // (Opening) quote
-            // TODO: Interpolations for "-quotes
+            // TODO: Command interpolation for "-quotes
             let quote = c;
             let mut is_escaped = false;
+            let mut in_interpolation = false;
             if current.is_none() {
                 current = Some(vec![String::new()]);
             }
@@ -69,9 +70,11 @@ pub fn lex(line: &str) -> Result<Vec<Token>> {
                 let Some(c) = it.next() else {
                     bail!("Unexpectedly reached end of {}-quoted string", quote);
                 };
-                if !is_escaped && c == '\\' {
+                if !is_escaped && c == '\\' { // Escape backslash
                     is_escaped = true;
-                } else {
+                } else if !is_escaped && quote == '"' && c == '$' { // Variable interpolation
+                    in_interpolation = true;
+                } else { // Escaped or normal character
                     if !is_escaped && c == quote {
                         break;
                     }
@@ -107,8 +110,8 @@ fn op(op: Operator) -> Token {
 }
 
 #[cfg(test)]
-fn string(s: &str) -> Token {
-    Token::String(vec![s.to_owned()])
+fn string(s: impl IntoIterator<Item = &'static str>) -> Token {
+    Token::String(s.into_iter().map(|s| s.to_owned()).collect())
 }
 
 #[cfg(test)]
@@ -125,24 +128,24 @@ mod tests {
 
     #[test]
     fn simple_commands() {
-        assert_eq!(lex("ls").unwrap(), vec![string("ls")]);
-        assert_eq!(lex("ls /").unwrap(), vec![string("ls"), string("/")]);
-        assert_eq!(lex("ls hello").unwrap(), vec![string("ls"), string("hello")]);
-        assert_eq!(lex("ls /hello/ world").unwrap(), vec![string("ls"), string("/hello/"), string("world")]);
-        assert_eq!(lex(" ls / ").unwrap(), vec![string("ls"), string("/")]);
-        assert_eq!(lex(" pwd").unwrap(), vec![string("pwd")]);
-        assert_eq!(lex("echo Hello world123 !").unwrap(), vec![string("echo"), string("Hello"), string("world123"), string("!")]);
+        assert_eq!(lex("ls").unwrap(), vec![string(["ls"])]);
+        assert_eq!(lex("ls /").unwrap(), vec![string(["ls"]), string(["/"])]);
+        assert_eq!(lex("ls hello").unwrap(), vec![string(["ls"]), string(["hello"])]);
+        assert_eq!(lex("ls /hello/ world").unwrap(), vec![string(["ls"]), string(["/hello/"]), string(["world"])]);
+        assert_eq!(lex(" ls / ").unwrap(), vec![string(["ls"]), string(["/"])]);
+        assert_eq!(lex(" pwd").unwrap(), vec![string(["pwd"])]);
+        assert_eq!(lex("echo Hello world123 !").unwrap(), vec![string(["echo"]), string(["Hello"]), string(["world123"]), string(["!"])]);
     }
 
     #[test]
     fn quotes() {
-        assert_eq!(lex("''").unwrap(), vec![string("")]);
-        assert_eq!(lex(r#""""#).unwrap(), vec![string("")]);
-        assert_eq!(lex(r#" "" ""  "" "#).unwrap(), vec![string(""), string(""), string("")]);
-        assert_eq!(lex(r#" """"  "" "#).unwrap(), vec![string(""), string("")]);
-        assert_eq!(lex(r#" "''"  "" "#).unwrap(), vec![string("''"), string("")]);
-        assert_eq!(lex(r#"echo "Hello world "  1234"#).unwrap(), vec![string("echo"), string("Hello world "), string("1234")]);
-        assert_eq!(lex(r#"echo '"Hello 'world   1234"#).unwrap(), vec![string("echo"), string("\"Hello world"), string("1234")]);
+        assert_eq!(lex("''").unwrap(), vec![string([""])]);
+        assert_eq!(lex(r#""""#).unwrap(), vec![string([""])]);
+        assert_eq!(lex(r#" "" ""  "" "#).unwrap(), vec![string([""]), string([""]), string([""])]);
+        assert_eq!(lex(r#" """"  "" "#).unwrap(), vec![string([""]), string([""])]);
+        assert_eq!(lex(r#" "''"  "" "#).unwrap(), vec![string(["''"]), string([""])]);
+        assert_eq!(lex(r#"echo "Hello world "  1234"#).unwrap(), vec![string(["echo"]), string(["Hello world "]), string(["1234"])]);
+        assert_eq!(lex(r#"echo '"Hello 'world   1234"#).unwrap(), vec![string(["echo"]), string(["\"Hello world"]), string(["1234"])]);
         assert!(lex(r#" "''  "" "#).is_err());
         assert!(lex(r#"echo "Hello world   1234"#).is_err());
     }
@@ -150,37 +153,44 @@ mod tests {
     #[test]
     fn escapes() {
         assert!(lex("'''").is_err());
-        assert_eq!(lex(r#"'\''"#).unwrap(), vec![string("'")]);
-        assert_eq!(lex(r#""\'""#).unwrap(), vec![string("'")]);
-        assert_eq!(lex(r#"'\"'"#).unwrap(), vec![string("\"")]);
-        assert_eq!(lex(r#"Hello " \"world\"""#).unwrap(), vec![string("Hello"), string(" \"world\"")]);
-        assert_eq!(lex(r#""\\""#).unwrap(), vec![string("\\")]);
-        assert_eq!(lex(r#"'This\\\\is a double escape'"#).unwrap(), vec![string("This\\\\is a double escape")]);
+        assert_eq!(lex(r#"'\''"#).unwrap(), vec![string(["'"])]);
+        assert_eq!(lex(r#""\'""#).unwrap(), vec![string(["'"])]);
+        assert_eq!(lex(r#"'\"'"#).unwrap(), vec![string(["\""])]);
+        assert_eq!(lex(r#"Hello " \"world\"""#).unwrap(), vec![string(["Hello"]), string([" \"world\""])]);
+        assert_eq!(lex(r#""\\""#).unwrap(), vec![string(["\\"])]);
+        assert_eq!(lex(r#"'This\\\\is a double escape'"#).unwrap(), vec![string(["This\\\\is a double escape"])]);
+        assert_eq!(lex(r#""Escaped dollar sign: \$test 123""#).unwrap(), vec![string(["Escaped dollar sign: $test 123"])]);
         assert!(lex(r#"'Unclosed: \\\'"#).is_err());
         // TODO: We should handle backslashes outside quoted contexts too
-        assert_eq!(lex("\\").unwrap(), vec![string("\\")]);
+        assert_eq!(lex("\\").unwrap(), vec![string(["\\"])]);
         // TODO: Should we insert the backslash with unrecognized characters? Or error?
-        assert_eq!(lex(r#"'\another char'"#).unwrap(), vec![string("another char")]);
+        assert_eq!(lex(r#"'\another char'"#).unwrap(), vec![string(["another char"])]);
+    }
+
+    #[test]
+    fn interpolations() {
+        assert_eq!(lex("'test$x'").unwrap(), vec![string(["test$x"])]);
+        assert_eq!(lex(r#""test$x""#).unwrap(), vec![string(["testx"])]); // FIXME
     }
 
     #[test]
     fn redirects() {
         assert_eq!(lex(">").unwrap(), vec![op(redirect())]);
         assert_eq!(lex(">>").unwrap(), vec![op(redirect()), op(redirect())]);
-        assert_eq!(lex(">a").unwrap(), vec![op(redirect()), string("a")]);
-        assert_eq!(lex(">1").unwrap(), vec![op(redirect()), string("1")]);
-        assert_eq!(lex("  >0>  1").unwrap(), vec![op(redirect()), string("0"), op(redirect()), string("1")]);
-        assert_eq!(lex("echo Test > a").unwrap(), vec![string("echo"), string("Test"), op(redirect()), string("a")]);
-        assert_eq!(lex(r#"echo '{"x": 23,"y":3}' > /dev/null"#).unwrap(), vec![string("echo"), string(r#"{"x": 23,"y":3}"#), op(redirect()), string("/dev/null")])
+        assert_eq!(lex(">a").unwrap(), vec![op(redirect()), string(["a"])]);
+        assert_eq!(lex(">1").unwrap(), vec![op(redirect()), string(["1"])]);
+        assert_eq!(lex("  >0>  1").unwrap(), vec![op(redirect()), string(["0"]), op(redirect()), string(["1"])]);
+        assert_eq!(lex("echo Test > a").unwrap(), vec![string(["echo"]), string(["Test"]), op(redirect()), string(["a"])]);
+        assert_eq!(lex(r#"echo '{"x": 23,"y":3}' > /dev/null"#).unwrap(), vec![string(["echo"]), string([r#"{"x": 23,"y":3}"#]), op(redirect()), string(["/dev/null"])])
     }
 
     #[test]
     fn assignments() {
-        assert_eq!(lex(r#"hello="123""#).unwrap(), vec![string("hello"), op(assign()), string("123")]);
-        assert_eq!(lex(r#"hello  ="1""#).unwrap(), vec![string("hello"), op(assign()), string("1")]);
-        assert_eq!(lex(r#"hello = "1""#).unwrap(), vec![string("hello"), op(assign()), string("1")]);
-        assert_eq!(lex(r#"hello='"123"'"#).unwrap(), vec![string("hello"), op(assign()), string("\"123\"")]);
-        assert_eq!(lex(r#"hello '="123"'"#).unwrap(), vec![string("hello"), string("=\"123\"")]);
-        assert_eq!(lex(r#"hello'="123"'"#).unwrap(), vec![string("hello=\"123\"")]);
+        assert_eq!(lex(r#"hello="123""#).unwrap(), vec![string(["hello"]), op(assign()), string(["123"])]);
+        assert_eq!(lex(r#"hello  ="1""#).unwrap(), vec![string(["hello"]), op(assign()), string(["1"])]);
+        assert_eq!(lex(r#"hello = "1""#).unwrap(), vec![string(["hello"]), op(assign()), string(["1"])]);
+        assert_eq!(lex(r#"hello='"123"'"#).unwrap(), vec![string(["hello"]), op(assign()), string(["\"123\""])]);
+        assert_eq!(lex(r#"hello '="123"'"#).unwrap(), vec![string(["hello"]), string(["=\"123\""])]);
+        assert_eq!(lex(r#"hello'="123"'"#).unwrap(), vec![string(["hello=\"123\""])]);
     }
 }
