@@ -102,7 +102,7 @@ pub fn lex(line: &str) -> Result<Vec<Token>> {
                 };
                 if !is_escaped && c == ESCAPE_CHAR {
                     is_escaped = true;
-                } else if !is_escaped && !in_interpolation && quote == '"' && c == INTERPOLATION_CHAR {
+                } else if !is_escaped && quote == '"' && c == INTERPOLATION_CHAR {
                     // Entering interpolation
                     in_interpolation = true;
                     current.as_mut().unwrap().push(Segment::empty_variable());
@@ -218,9 +218,11 @@ mod tests {
     fn interpolations() {
         assert_eq!(lex("$x").unwrap(), vec![string([lit(""), var("x")])]);
         assert_eq!(lex("test$x").unwrap(), vec![string([lit("test"), var("x")])]);
+        assert_eq!(lex("test$x$y").unwrap(), vec![string([lit("test"), var("x"), var("y")])]);
         assert_eq!(lex("test $x").unwrap(), vec![lit_string(["test"]), string([lit(""), var("x")])]);
         assert_eq!(lex("'test$x'").unwrap(), vec![lit_string(["test$x"])]);
         assert_eq!(lex(r#""$abc""#).unwrap(), vec![string([lit(""), var("abc"), lit("")])]);
+        assert_eq!(lex(r#""$abc$ghi""#).unwrap(), vec![string([lit(""), var("abc"), var("ghi"), lit("")])]);
         assert_eq!(lex(r#""test$x""#).unwrap(), vec![string([lit("test"), var("x"), lit("")])]);
         assert_eq!(lex(r#""$var_with_underscore abc""#).unwrap(), vec![string([lit(""), var("var_with_underscore"), lit(" abc")])]);
         assert_eq!(lex(r#""$var_with-hyphen""#).unwrap(), vec![string([lit(""), var("var_with"), lit("-hyphen")])]);
