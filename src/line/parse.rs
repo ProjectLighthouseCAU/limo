@@ -152,6 +152,8 @@ mod tests {
         Statement::Command(command)
     }
 
+    // TODO: Add tests for variable interpolations
+
     #[test]
     fn whitespace() {
         assert_eq!(parse("").unwrap(), cmd_stmt(lit_invocation([])));
