@@ -25,7 +25,7 @@ pub struct Argument {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Assignment {
     /// The variable name.
-    pub lhs: String,
+    pub lhs: Argument,
     /// The assigned value.
     pub rhs: Argument,
 }
@@ -45,7 +45,7 @@ pub enum Statement {
 }
 
 pub fn parse(line: &str) -> Result<Statement> {
-    Result::<Statement>::from_iter(lex(line))
+    Result::<Statement>::from_iter(lex(line)?)
 }
 
 impl FromIterator<Token> for Result<Statement> {
@@ -71,6 +71,7 @@ fn parse_assignment<T>(tokens: &mut MultiPeek<T>) -> Result<Assignment> where T:
     let Some(Token::String(rhs)) = tokens.peek_nth(2).cloned() else {
         bail!("Parse error: Expected variable name in assignment");
     };
+    let lhs = parse_argument(&lhs)?;
     let rhs = parse_argument(&rhs)?;
     Ok(Assignment { lhs, rhs })
 }
@@ -107,9 +108,9 @@ fn parse_command<T>(tokens: &mut MultiPeek<T>) -> Result<Command> where T: Itera
     ))
 }
 
-fn parse_argument(arg: &str) -> Result<Argument> {
+fn parse_argument(args: &[String]) -> Result<Argument> {
     // TODO
-    let fragments = vec![Fragment::Literal(arg.to_owned())];
+    let fragments = args.into_iter().map(|a| Fragment::Literal(a.to_owned())).collect();
     Ok(Argument { fragments })
 }
 

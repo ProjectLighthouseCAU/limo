@@ -26,8 +26,9 @@ struct Interpretation {
 }
 
 async fn interpret_assignment(assignment: Assignment, ctx: &mut Context) -> Result<()> {
+    let lhs = evaluate_argument(assignment.lhs, ctx).await?;
     let rhs = evaluate_argument(assignment.rhs, ctx).await?;
-    ctx.variables.insert(assignment.lhs, rhs);
+    ctx.variables.insert(lhs, rhs);
     Ok(())
 }
 
