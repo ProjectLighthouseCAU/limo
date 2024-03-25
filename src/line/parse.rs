@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use multipeek::{IteratorExt, MultiPeek};
 
-use super::lex::{lex, Operator, Segment, Token};
+use super::lex::{lex, Operator, Segment, SegmentKind, Token};
 
 /// A fragment of an argument (a string fragment after evaluation).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -109,9 +109,15 @@ fn parse_command<T>(tokens: &mut MultiPeek<T>) -> Result<Command> where T: Itera
 }
 
 fn parse_argument(segments: &[Segment]) -> Result<Argument> {
-    // TODO
-    let fragments = segments.into_iter().map(|a| Fragment::Literal(a.text.to_owned())).collect();
+    let fragments = segments.into_iter().map(parse_segment).collect();
     Ok(Argument { fragments })
+}
+
+fn parse_segment(segment: &Segment) -> Fragment {
+    match segment.kind {
+        SegmentKind::Literal => Fragment::Literal(segment.text.to_owned()),
+        SegmentKind::Variable => Fragment::Variable(segment.text.to_owned()),
+    }
 }
 
 #[cfg(test)]

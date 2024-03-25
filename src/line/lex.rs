@@ -40,7 +40,7 @@ operators! {
 }
 
 /// The kind of string segment.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SegmentKind {
     /// A literal string segment.
     Literal,
