@@ -159,6 +159,8 @@ mod tests {
         assert!(lex(r#"'Unclosed: \\\'"#).is_err());
         // TODO: We should handle backslashes outside quoted contexts too
         assert_eq!(lex("\\").unwrap(), vec![string("\\")]);
+        // TODO: Should we insert the backslash with unrecognized characters? Or error?
+        assert_eq!(lex(r#"'\another char'"#).unwrap(), vec![string("another char")]);
     }
 
     #[test]
