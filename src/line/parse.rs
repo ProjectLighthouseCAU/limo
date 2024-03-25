@@ -157,6 +157,12 @@ mod tests {
         assert_eq!(parse("echo").unwrap(), cmd_stmt(lit_invocation(["echo"])));
         assert_eq!(parse("echo 123").unwrap(), cmd_stmt(lit_invocation(["echo", "123"])));
         assert_eq!(parse("echo \"123\"").unwrap(), cmd_stmt(lit_invocation(["echo", "123"])));
+        assert_eq!(parse("ls -la").unwrap(), cmd_stmt(lit_invocation(["ls", "-la"])));
+        assert_eq!(parse("  pwd  --help ").unwrap(), cmd_stmt(lit_invocation(["pwd", "--help"])));
+        assert_eq!(parse("pwd--help").unwrap(), cmd_stmt(lit_invocation(["pwd--help"])));
+        assert_eq!(parse("cd..").unwrap(), cmd_stmt(lit_invocation(["cd.."])));
+        assert_eq!(parse("cd ..").unwrap(), cmd_stmt(lit_invocation(["cd", ".."])));
+        assert_eq!(parse("cd ./test/../../.").unwrap(), cmd_stmt(lit_invocation(["cd", "./test/../../."])));
     }
 
     #[test]
