@@ -58,8 +58,7 @@ pub fn lex(line: &str) -> Result<Vec<Token>> {
             }
             current = None;
             tokens.push(Token::Operator(op));
-        } else if c == '\'' || c == '"' { // (Opening) quote
-            // TODO: Command interpolation for "-quotes
+        } else if c == '\'' || c == '"' { // Opening quote
             let quote = c;
             let mut is_escaped = false;
             let mut in_interpolation = false;
@@ -70,17 +69,24 @@ pub fn lex(line: &str) -> Result<Vec<Token>> {
                 let Some(c) = it.next() else {
                     bail!("Unexpectedly reached end of {}-quoted string", quote);
                 };
-                if !is_escaped && c == '\\' { // Escape backslash
+                if !is_escaped && c == '\\' {
                     is_escaped = true;
-                } else if !is_escaped && quote == '"' && c == '$' { // Variable interpolation
-                    in_interpolation = true;
-                } else { // Escaped or normal character
-                    if !is_escaped && c == quote {
-                        break;
+                } else {
+                    if !is_escaped {
+                        if !in_interpolation && quote == '"' && c == '$' {
+                            // Entering interpolation
+                            in_interpolation = true;
+                            current.as_mut().unwrap().push(String::new());
+                        } else if in_interpolation && !c.is_ascii_alphanumeric() && c != '_' {
+                            // Exiting interpolation
+                            in_interpolation = false;
+                            current.as_mut().unwrap().push(String::new());
+                        }
+                        if c == quote {
+                            break;
+                        }
                     }
-                    if let Some(current) = current.as_mut() {
-                        current.last_mut().unwrap().push(c);
-                    }
+                    current.as_mut().unwrap().last_mut().unwrap().push(c);
                     is_escaped = false;
                 }
             }
@@ -170,7 +176,7 @@ mod tests {
     #[test]
     fn interpolations() {
         assert_eq!(lex("'test$x'").unwrap(), vec![string(["test$x"])]);
-        assert_eq!(lex(r#""test$x""#).unwrap(), vec![string(["testx"])]); // FIXME
+        assert_eq!(lex(r#""test$x""#).unwrap(), vec![string(["test", "$x", ""])]);
     }
 
     #[test]
