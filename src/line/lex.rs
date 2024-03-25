@@ -6,7 +6,6 @@ macro_rules! lexer {
         pub enum Token {
             $($op_name_upper,)*
             String(Vec<String>),
-            Invalid(String),
         }
 
         pub fn lex(line: &str) -> Result<Vec<Token>> {
@@ -92,11 +91,6 @@ macro_rules! lexer {
         fn string(s: &str) -> Token {
             Token::String(vec![s.to_owned()])
         }
-
-        #[cfg(test)]
-        fn invalid(s: &str) -> Token {
-            Token::Invalid(s.to_owned())
-        }
     };
 }
 
@@ -107,7 +101,7 @@ lexer! {
 
 #[cfg(test)]
 mod tests {
-    use super::{string, assign, invalid, lex, redirect};
+    use super::{string, assign, lex, redirect};
 
     #[test]
     fn whitespace() {
