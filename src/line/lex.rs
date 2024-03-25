@@ -49,13 +49,13 @@ pub fn lex(line: &str) -> Result<Vec<Token>> {
     let mut current: Option<Vec<String>> = None;
     let mut it = line.chars().into_iter();
     while let Some(c) = it.next() {
-        if let Ok(op) = Operator::try_from(c) {
+        if let Ok(op) = Operator::try_from(c) { // Operator
             if let Some(current) = current.take() {
                 tokens.push(Token::String(current));
             }
             current = None;
             tokens.push(Token::Operator(op));
-        } else if c == '\'' || c == '"' {
+        } else if c == '\'' || c == '"' { // (Opening) quote
             // TODO: Escapes (and interpolations for "")
             let quote = c;
             if current.is_none() {
@@ -72,12 +72,12 @@ pub fn lex(line: &str) -> Result<Vec<Token>> {
                     current.last_mut().unwrap().push(c);
                 }
             }
-        } else if c.is_whitespace() {
+        } else if c.is_whitespace() { // Whitespace
             if let Some(current) = current.take() {
                 tokens.push(Token::String(current));
             }
             current = None;
-        } else {
+        } else { // Non-whitespace
             if current.is_none() {
                 current = Some(vec![String::new()]);
             }
