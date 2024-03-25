@@ -2,6 +2,7 @@ use anyhow::{bail, Error, Result};
 
 macro_rules! operators {
     ($(($op_name_upper:ident, $op_name_lower:ident, $op_char:literal)),* $(,)?) => {
+        /// An operator understood by the lexer.
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub enum Operator {
             $($op_name_upper,)*
@@ -38,12 +39,14 @@ operators! {
     (Assign, assign, '='),
 }
 
+/// A token produced by the lexer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Operator(Operator),
     String(Vec<String>),
 }
 
+/// Tokenizes the line. This handles quoting and removes whitespace.
 pub fn lex(line: &str) -> Result<Vec<Token>> {
     let mut tokens = Vec::<Token>::new();
     let mut current: Option<Vec<String>> = None;
