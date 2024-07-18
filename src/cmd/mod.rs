@@ -31,4 +31,5 @@ cmd_mods! {
     touch,
     tree,
     uln,
+    display,
 }
