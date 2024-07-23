@@ -1,7 +1,7 @@
 use crate::{context::Context, path::VirtualPathBuf};
 use anyhow::Result;
 use clap::{command, Parser};
-use crossterm::event::EventStream;
+use crossterm::event::{Event, EventStream};
 use futures::{select, StreamExt};
 use lighthouse_client::protocol::{Frame, Model, Value, Verb};
 use ratatui::{
@@ -43,12 +43,13 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
     let mut reader = EventStream::new().fuse();
     loop {
         select! {
-            _ = reader.next() => break,
+            msg = reader.next() => match msg {
+                None | Some(Err(_)) | Some(Ok(Event::Key(_)))=> break,
+                _ => {},
+            },
             msg = stream.next() => match msg {
-                None => break,
-                Some(Err(_)) => break,
-                Some(Ok(msg)) =>
-                if let Model::Frame(lh_frame) = msg.payload {
+                None | Some(Err(_)) => break,
+                Some(Ok(msg)) => if let Model::Frame(lh_frame) = msg.payload {
                     terminal.draw(|frame| {
                         let canvas = draw_to_canvas(
                             lh_frame,
