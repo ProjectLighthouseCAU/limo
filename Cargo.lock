@@ -714,9 +714,9 @@ checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
 
 [[package]]
 name = "lighthouse-client"
-version = "3.0.1"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e27c65998e9183705cbf7d742ef40b1bd315aac704e651b01fc9fd1cd39d9036"
+checksum = "6056da3ea5337105f7e69df5678c4240ec14ac912a03cd93f86f8075f27b0ce0"
 dependencies = [
  "async-tungstenite",
  "futures",
@@ -725,6 +725,7 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_with",
+ "stream-guard",
  "thiserror",
  "tokio",
  "tracing",
@@ -732,9 +733,9 @@ dependencies = [
 
 [[package]]
 name = "lighthouse-protocol"
-version = "3.0.1"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad904b463b1c4bd22249207abaeb3134b92e39ecf6665f73c8693ec378b9c8e2"
+checksum = "574e8a8c3ea53dbb741f7a8ac0ebd918c9b72bd278f37b5b61bef997cabdc23b"
 dependencies = [
  "rand",
  "rmpv",
@@ -938,6 +939,26 @@ name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
+
+[[package]]
+name = "pin-project"
+version = "1.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6bf43b791c5b9e34c3d182969b4abb522f9343702850a2e57f460d00d09b4b3"
+dependencies = [
+ "pin-project-internal",
+]
+
+[[package]]
+name = "pin-project-internal"
+version = "1.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f38a4412a78282e09a2cf38d195ea5420d15ba0602cb375210efbc877243965"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "pin-project-lite"
@@ -1264,6 +1285,16 @@ checksum = "05ffd9c0a93b7543e062e759284fcf5f5e3b098501104bfbdde4d404db792871"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "stream-guard"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1d822c252e766a20acaa3e39f9001cadbd91c05b913e716bf184879204bdcb4"
+dependencies = [
+ "futures",
+ "pin-project",
 ]
 
 [[package]]
