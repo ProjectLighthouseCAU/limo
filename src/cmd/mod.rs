@@ -20,6 +20,7 @@ cmd_mods! {
     cat,
     cd,
     cp,
+    display,
     echo,
     ln,
     ls,
@@ -31,5 +32,4 @@ cmd_mods! {
     touch,
     tree,
     uln,
-    display,
 }

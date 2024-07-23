@@ -2,8 +2,7 @@ use crate::{context::Context, path::VirtualPathBuf};
 use anyhow::Result;
 use clap::{command, Parser};
 use crossterm::event::EventStream;
-use futures::select;
-use futures_util::stream::StreamExt;
+use futures::{select, StreamExt};
 use lighthouse_client::protocol::{Frame, Model, Value, Verb};
 use ratatui::{
     backend::CrosstermBackend,

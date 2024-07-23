@@ -844,7 +844,6 @@ dependencies = [
  "crossterm",
  "dotenvy",
  "futures",
- "futures-util",
  "lighthouse-client",
  "multipeek",
  "ratatui",
