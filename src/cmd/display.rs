@@ -1,13 +1,13 @@
 use crate::{context::Context, path::VirtualPathBuf};
 use anyhow::Result;
 use clap::{command, Parser};
-use futures::poll;
+use crossterm::event::EventStream;
+use futures::select;
 use futures_util::stream::StreamExt;
 use lighthouse_client::protocol::{Frame, Model, Value, Verb};
 use ratatui::{
     backend::CrosstermBackend,
     crossterm::{
-        event::{self, Event, KeyCode, KeyModifiers},
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
         ExecutableCommand,
     },
@@ -15,16 +15,11 @@ use ratatui::{
     symbols::Marker,
     widgets::{
         canvas::{Canvas, Rectangle},
-        Widget,
+        Block, BorderType, Padding, Widget,
     },
     Terminal,
 };
-use std::{io::stdout, task::Poll, time::Duration};
-
-// Timeout for keyboard event polling.
-// This limits the execution speed of the loop
-// and also the maximum possible framerate.
-const POLL_TIMEOUT_MS: u64 = 10;
+use std::io::stdout;
 
 #[derive(Parser)]
 #[command(bin_name = "display")]
@@ -40,52 +35,51 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
     let args = Args::try_parse_from(args)?;
     let path = ctx.cwd.join(args.path);
 
-    let mut stream = ctx.lh.stream::<Value, Model>(&path.as_lh_vec(), Value::Nil).await?;
+    let mut stream = ctx.lh.stream::<Value, Model>(&path.as_lh_vec(), Value::Nil).await?.fuse();
 
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
 
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+    let mut reader = EventStream::new().fuse();
     loop {
-        if let Poll::Ready(Some(Ok(msg))) = poll!(stream.next()) {
-            if let Model::Frame(lh_frame) = msg.payload {
-                terminal.draw(|frame| {
-                    let canvas = draw_to_canvas(
-                        lh_frame,
-                        frame.size().width.into(),
-                        frame.size().height.into(),
-                    );
-                    frame.render_widget(canvas, frame.size());
-                })?;
-            }
-        }
-
-        // TODO: maybe we can put this in a future and await either the next frame
-        // or a key event instead of polling both in a loop?
-        if event::poll(Duration::from_millis(POLL_TIMEOUT_MS))? {
-            if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') => break,
-                    KeyCode::Char('c') if key.modifiers.intersects(KeyModifiers::CONTROL) => break,
-                    _ => {}
+        select! {
+            _ = reader.next() => break,
+            msg = stream.next() => match msg {
+                None => break,
+                Some(Err(_)) => break,
+                Some(Ok(msg)) =>
+                if let Model::Frame(lh_frame) = msg.payload {
+                    terminal.draw(|frame| {
+                        let canvas = draw_to_canvas(
+                            lh_frame,
+                            frame.size().width.into(),
+                            frame.size().height.into(),
+                            path.to_string()
+                        );
+                        frame.render_widget(canvas, frame.size());
+                    })?;
                 }
-            }
+            },
         }
     }
 
-    ctx.lh.perform::<Value, Value>(&Verb::Stop, &path.as_lh_vec(), Value::Nil).await?;
-
-    disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
+    disable_raw_mode()?;
+
+    ctx.lh.perform::<Value, Value>(&Verb::Stop, &path.as_lh_vec(), Value::Nil).await?;
 
     Ok(String::new())
 }
 
-fn draw_to_canvas(frame: Frame, max_width: f64, max_height: f64) -> impl Widget {
+fn draw_to_canvas(frame: Frame, max_width: f64, max_height: f64, title: String) -> impl Widget {
     Canvas::default()
-        // TODO decide whether to add a border and title
-        // and figure out how to size it properly such that it fits the display
-        // .block(Block::bordered().title(path.to_string()))
+        .block(
+            Block::bordered()
+                .title(title)
+                .border_type(BorderType::Rounded)
+                .padding(Padding::new(1, 1, 0, 0)),
+        )
         .marker(Marker::Block)
         .paint(move |ctx| {
             for y in 0..14 {
