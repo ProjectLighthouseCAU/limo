@@ -92,21 +92,39 @@ fn display_canvas(lh_frame: Frame, title: String) -> impl Widget {
                 .padding(Padding::new(1, 1, 0, 0)),
         )
         .marker(Marker::Block)
-        .paint(move |ctx| ctx.draw(&Display { lh_frame }))
+        .paint(move |ctx| ctx.draw(&Display { lh_frame, width: 1.0 }))
+        .x_bounds([0.0, 1.0])
+        .y_bounds([0.0, 1.0])
 }
 
 struct Display {
-    lh_frame: Frame
+    lh_frame: Frame,
+    width: f64,
 }
 
 impl Shape for Display {
     fn draw(&self, painter: &mut Painter) {
+        // Height is not needed since the canvas coordinate system starts from
+        // the bottom, so y = 0 corresponds to the height in the terminal/grid
+        // coordinate system.
+        let Some((grid_width, grid_height)) = painter.get_point(self.width, 0.0) else {
+            return
+        };
+        let scale_x = grid_width / LIGHTHOUSE_COLS;
+        let scale_y = grid_height / LIGHTHOUSE_ROWS;
+
         for y in 0..LIGHTHOUSE_ROWS {
             for x in 0..LIGHTHOUSE_COLS {
-                let c = self.lh_frame.get(x, y);
-                painter.paint(x, y, Color::from_u32(
-                    ((c.red as u32) << 16) | (c.green as u32) << 8 | c.blue as u32,
-                ));
+                let lh_color = self.lh_frame.get(x, y);
+                let tui_color = Color::from_u32(
+                    ((lh_color.red as u32) << 16) | (lh_color.green as u32) << 8 | lh_color.blue as u32
+                );
+
+                for dy in 0..scale_y.min(grid_height - 1) {
+                    for dx in 0..scale_x.min(grid_width - 1) {
+                        painter.paint(x * scale_x + dx, y * scale_y + dy, tui_color);
+                    }
+                }
             }
         }
     }
