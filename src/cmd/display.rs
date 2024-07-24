@@ -13,7 +13,7 @@ use ratatui::{
     style::Color,
     symbols::Marker,
     widgets::{
-        canvas::{Canvas, Rectangle},
+        canvas::{Canvas, Painter, Rectangle, Shape},
         Block, BorderType, Padding, Widget,
     },
     Terminal,
@@ -64,7 +64,7 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
                 None | Some(Err(_)) => break,
                 Some(Ok(msg)) => if let Model::Frame(lh_frame) = msg.payload {
                     terminal.draw(|frame| {
-                        let canvas = lh_frame_canvas(
+                        let canvas = display_canvas(
                             lh_frame,
                             format!("{} ({}: quit)", path, QUIT_KEY),
                         );
@@ -83,7 +83,7 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
     Ok(String::new())
 }
 
-fn lh_frame_canvas(lh_frame: Frame, title: String) -> impl Widget {
+fn display_canvas(lh_frame: Frame, title: String) -> impl Widget {
     Canvas::default()
         .block(
             Block::bordered()
@@ -92,24 +92,24 @@ fn lh_frame_canvas(lh_frame: Frame, title: String) -> impl Widget {
                 .padding(Padding::new(1, 1, 0, 0)),
         )
         .marker(Marker::Block)
-        .paint(move |ctx| {
-            for y in 0..LIGHTHOUSE_ROWS {
-                for x in 0..LIGHTHOUSE_COLS {
-                    let c = lh_frame.get(x, y);
-                    ctx.draw(&Rectangle {
-                        x: x as f64,
-                        y: (LIGHTHOUSE_ROWS - 1 - y) as f64,
-                        width: 1.0,
-                        height: 1.0,
-                        color: Color::from_u32(
-                            ((c.red as u32) << 16) | (c.green as u32) << 8 | c.blue as u32,
-                        ),
-                    })
-                }
+        .paint(move |ctx| ctx.draw(&Display { lh_frame }))
+}
+
+struct Display {
+    lh_frame: Frame
+}
+
+impl Shape for Display {
+    fn draw(&self, painter: &mut Painter) {
+        for y in 0..LIGHTHOUSE_ROWS {
+            for x in 0..LIGHTHOUSE_COLS {
+                let c = self.lh_frame.get(x, y);
+                painter.paint(x, y, Color::from_u32(
+                    ((c.red as u32) << 16) | (c.green as u32) << 8 | c.blue as u32,
+                ));
             }
-        })
-        .x_bounds([0.0, LIGHTHOUSE_COLS as f64])
-        .y_bounds([0.0, LIGHTHOUSE_ROWS as f64])
+        }
+    }
 }
 
 fn key_code_to_js(key_code: KeyCode) -> Option<i32> {
