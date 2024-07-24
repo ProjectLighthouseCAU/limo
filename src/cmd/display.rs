@@ -3,7 +3,7 @@ use anyhow::Result;
 use clap::{command, Parser};
 use crossterm::event::{Event, EventStream, KeyCode, KeyEventKind};
 use futures::{select, StreamExt};
-use lighthouse_client::protocol::{Frame, InputEvent, Model};
+use lighthouse_client::protocol::{Frame, InputEvent, Model, LIGHTHOUSE_COLS, LIGHTHOUSE_ROWS};
 use ratatui::{
     backend::CrosstermBackend,
     crossterm::{
@@ -95,16 +95,16 @@ fn draw_to_canvas(frame: Frame, max_width: f64, max_height: f64, title: String) 
         )
         .marker(Marker::Block)
         .paint(move |ctx| {
-            for y in 0..14 {
-                for x in 0..28 {
+            for y in 0..LIGHTHOUSE_ROWS {
+                for x in 0..LIGHTHOUSE_COLS {
                     let c = frame.get(x, y);
                     ctx.draw(&Rectangle {
                         x: x as f64,
-                        y: y as f64,
+                        y: (LIGHTHOUSE_ROWS - 1 - y) as f64,
                         width: 1.0,
                         height: 1.0,
                         color: Color::from_u32(
-                            c.blue as u32 | (c.green as u32) << 8 | (c.red as u32) << 16,
+                            ((c.red as u32) << 16) | (c.green as u32) << 8 | c.blue as u32,
                         ),
                     })
                 }
