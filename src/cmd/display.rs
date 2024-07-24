@@ -3,7 +3,7 @@ use anyhow::Result;
 use clap::{command, Parser};
 use crossterm::event::{Event, EventStream};
 use futures::{select, StreamExt};
-use lighthouse_client::protocol::{Frame, Model, Value, Verb};
+use lighthouse_client::protocol::{Frame, Model};
 use ratatui::{
     backend::CrosstermBackend,
     crossterm::{
@@ -34,7 +34,7 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
     let args = Args::try_parse_from(args)?;
     let path = ctx.cwd.join(args.path);
 
-    let mut stream = ctx.lh.stream::<Value, Model>(&path.as_lh_vec(), Value::Nil).await?.fuse();
+    let mut stream = ctx.lh.stream(&path.as_lh_vec(), ()).await?.fuse();
 
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
@@ -67,7 +67,7 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
     stdout().execute(LeaveAlternateScreen)?;
     disable_raw_mode()?;
 
-    ctx.lh.perform::<Value, Value>(&Verb::Stop, &path.as_lh_vec(), Value::Nil).await?;
+    ctx.lh.stop(&path.as_lh_vec()).await?;
 
     Ok(String::new())
 }
