@@ -92,7 +92,7 @@ fn display_canvas(lh_frame: Frame, title: String) -> impl Widget {
                 .padding(Padding::new(1, 1, 0, 0)),
         )
         .marker(Marker::Block)
-        .paint(move |ctx| ctx.draw(&Display { lh_frame, width: 1.0 }))
+        .paint(move |ctx| ctx.draw(&Display { lh_frame, width: 1.0, height: 1.0 }))
         .x_bounds([0.0, 1.0])
         .y_bounds([0.0, 1.0])
 }
@@ -100,17 +100,35 @@ fn display_canvas(lh_frame: Frame, title: String) -> impl Widget {
 struct Display {
     lh_frame: Frame,
     width: f64,
+    height: f64,
 }
 
 impl Shape for Display {
     fn draw(&self, painter: &mut Painter) {
-        // Height is not needed since the canvas coordinate system starts from
-        // the bottom, so y = 0 corresponds to the height in the terminal/grid
-        // coordinate system.
-        let Some((grid_width, grid_height)) = painter.get_point(self.width, 0.0) else {
-            return
-        };
-        let scale = (grid_width / LIGHTHOUSE_COLS).min(grid_height / LIGHTHOUSE_ROWS);
+        // Figure out the bounds in the terminal coordinate system.
+        // Note that min_y and max_y are flipped since the canvas coordinate
+        // system has an upward-facing y-axis (as opposed to the terminal grid)
+
+        let Some((bounds_min_x, bounds_max_y)) = painter.get_point(0.0, 0.0) else { return };
+        let Some((bounds_max_x, bounds_min_y)) = painter.get_point(self.width, self.height) else { return };
+
+        let bounds_width = bounds_max_x - bounds_min_x;
+        let bounds_height = bounds_max_y - bounds_min_y;
+
+        // Compute the scale of each "pixel" in the lighthouse frame
+
+        let scale = (bounds_width / LIGHTHOUSE_COLS).min(bounds_height / LIGHTHOUSE_ROWS);
+
+        // Compute the actual size within the terminal coordinate system.
+        // We compute another `min_x` and `min_y` since we want to align
+        // the lighthouse display to the bottom left corner.
+
+        let _width = scale * LIGHTHOUSE_COLS;
+        let height = scale * LIGHTHOUSE_ROWS;
+        let min_x = bounds_min_x;
+        let min_y = bounds_min_y + bounds_height - height;
+
+        // Draw the lighthouse display
 
         for y in 0..LIGHTHOUSE_ROWS {
             for x in 0..LIGHTHOUSE_COLS {
@@ -119,9 +137,13 @@ impl Shape for Display {
                     ((lh_color.red as u32) << 16) | (lh_color.green as u32) << 8 | lh_color.blue as u32
                 );
 
-                for dy in 0..scale.min(grid_height - 1) {
-                    for dx in 0..scale.min(grid_width - 1) {
-                        painter.paint(x * scale + dx, y * scale + dy, tui_color);
+                for dy in 0..scale {
+                    for dx in 0..scale {
+                        painter.paint(
+                            min_x + x * scale + dx,
+                            min_y + y * scale + dy,
+                            tui_color
+                        );
                     }
                 }
             }
