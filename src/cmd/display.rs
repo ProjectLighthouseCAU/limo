@@ -64,10 +64,8 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
                 None | Some(Err(_)) => break,
                 Some(Ok(msg)) => if let Model::Frame(lh_frame) = msg.payload {
                     terminal.draw(|frame| {
-                        let canvas = draw_to_canvas(
+                        let canvas = lh_frame_canvas(
                             lh_frame,
-                            frame.size().width.into(),
-                            frame.size().height.into(),
                             format!("{} ({}: quit)", path, QUIT_KEY),
                         );
                         frame.render_widget(canvas, frame.size());
@@ -85,7 +83,7 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
     Ok(String::new())
 }
 
-fn draw_to_canvas(frame: Frame, max_width: f64, max_height: f64, title: String) -> impl Widget {
+fn lh_frame_canvas(lh_frame: Frame, title: String) -> impl Widget {
     Canvas::default()
         .block(
             Block::bordered()
@@ -97,7 +95,7 @@ fn draw_to_canvas(frame: Frame, max_width: f64, max_height: f64, title: String) 
         .paint(move |ctx| {
             for y in 0..LIGHTHOUSE_ROWS {
                 for x in 0..LIGHTHOUSE_COLS {
-                    let c = frame.get(x, y);
+                    let c = lh_frame.get(x, y);
                     ctx.draw(&Rectangle {
                         x: x as f64,
                         y: (LIGHTHOUSE_ROWS - 1 - y) as f64,
@@ -110,8 +108,8 @@ fn draw_to_canvas(frame: Frame, max_width: f64, max_height: f64, title: String) 
                 }
             }
         })
-        .x_bounds([0.0, max_width])
-        .y_bounds([0.0, max_height])
+        .x_bounds([0.0, LIGHTHOUSE_COLS as f64])
+        .y_bounds([0.0, LIGHTHOUSE_ROWS as f64])
 }
 
 fn key_code_to_js(key_code: KeyCode) -> Option<i32> {
