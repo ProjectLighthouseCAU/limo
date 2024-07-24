@@ -1,9 +1,9 @@
 use crate::{context::Context, path::VirtualPathBuf};
 use anyhow::Result;
 use clap::{command, Parser};
-use crossterm::event::{Event, EventStream};
+use crossterm::event::{Event, EventStream, KeyCode, KeyEventKind};
 use futures::{select, StreamExt};
-use lighthouse_client::protocol::{Frame, Model};
+use lighthouse_client::protocol::{Frame, InputEvent, Model};
 use ratatui::{
     backend::CrosstermBackend,
     crossterm::{
@@ -44,7 +44,18 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
     loop {
         select! {
             msg = reader.next() => match msg {
-                None | Some(Err(_)) | Some(Ok(Event::Key(_)))=> break,
+                Some(Ok(Event::Key(e))) => match e.code {
+                    KeyCode::Char('q') => break,
+                    _ => if let Some(code) = key_code_to_js(e.code) {
+                        ctx.lh.put(&path.as_lh_vec(), Model::InputEvent(InputEvent {
+                            source: 0,
+                            key: Some(code),
+                            button: None,
+                            is_down: matches!(e.kind, KeyEventKind::Press | KeyEventKind::Repeat),
+                        })).await?;
+                    }
+                },
+                None | Some(Err(_)) => break,
                 _ => {},
             },
             msg = stream.next() => match msg {
@@ -99,4 +110,31 @@ fn draw_to_canvas(frame: Frame, max_width: f64, max_height: f64, title: String) 
         })
         .x_bounds([0.0, max_width])
         .y_bounds([0.0, max_height])
+}
+
+fn key_code_to_js(key_code: KeyCode) -> Option<i32> {
+    match key_code {
+        KeyCode::Backspace => Some(8),
+        KeyCode::Enter => Some(13),
+        KeyCode::Left => Some(37),
+        KeyCode::Right => Some(39),
+        KeyCode::Up => Some(38),
+        KeyCode::Down => Some(40),
+        KeyCode::Home => Some(36),
+        KeyCode::End => Some(35),
+        KeyCode::PageUp => Some(33),
+        KeyCode::PageDown => Some(34),
+        KeyCode::Tab => Some(9),
+        KeyCode::Delete => Some(46),
+        KeyCode::Insert => Some(45),
+        KeyCode::F(n) => Some(111 + n as i32),
+        KeyCode::Char(c) => Some(c as i32 + '0' as i32),
+        KeyCode::Esc => Some(27),
+        KeyCode::CapsLock => Some(20),
+        KeyCode::ScrollLock => Some(145),
+        KeyCode::NumLock => Some(144),
+        KeyCode::PrintScreen => Some(44),
+        KeyCode::Pause => Some(19),
+        _ => None,
+    }
 }
