@@ -20,6 +20,7 @@ cmd_mods! {
     cat,
     cd,
     cp,
+    display,
     echo,
     ln,
     ls,
