@@ -110,8 +110,7 @@ impl Shape for Display {
         let Some((grid_width, grid_height)) = painter.get_point(self.width, 0.0) else {
             return
         };
-        let scale_x = grid_width / LIGHTHOUSE_COLS;
-        let scale_y = grid_height / LIGHTHOUSE_ROWS;
+        let scale = (grid_width / LIGHTHOUSE_COLS).min(grid_height / LIGHTHOUSE_ROWS);
 
         for y in 0..LIGHTHOUSE_ROWS {
             for x in 0..LIGHTHOUSE_COLS {
@@ -120,9 +119,9 @@ impl Shape for Display {
                     ((lh_color.red as u32) << 16) | (lh_color.green as u32) << 8 | lh_color.blue as u32
                 );
 
-                for dy in 0..scale_y.min(grid_height - 1) {
-                    for dx in 0..scale_x.min(grid_width - 1) {
-                        painter.paint(x * scale_x + dx, y * scale_y + dy, tui_color);
+                for dy in 0..scale.min(grid_height - 1) {
+                    for dx in 0..scale.min(grid_width - 1) {
+                        painter.paint(x * scale + dx, y * scale + dy, tui_color);
                     }
                 }
             }
