@@ -20,6 +20,8 @@ use ratatui::{
 };
 use std::io::stdout;
 
+const QUIT_KEY: char = 'q';
+
 #[derive(Parser)]
 #[command(bin_name = "display")]
 struct Args {
@@ -45,7 +47,7 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
         select! {
             msg = reader.next() => match msg {
                 Some(Ok(Event::Key(e))) => match e.code {
-                    KeyCode::Char('q') => break,
+                    KeyCode::Char(QUIT_KEY) => break,
                     _ => if let Some(code) = key_code_to_js(e.code) {
                         ctx.lh.put(&path.as_lh_vec(), Model::InputEvent(InputEvent {
                             source: 0,
@@ -66,7 +68,7 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
                             lh_frame,
                             frame.size().width.into(),
                             frame.size().height.into(),
-                            path.to_string()
+                            format!("{} ({}: quit)", path, QUIT_KEY),
                         );
                         frame.render_widget(canvas, frame.size());
                     })?;
