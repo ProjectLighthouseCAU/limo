@@ -13,7 +13,7 @@ use ratatui::{
     style::Color,
     symbols::Marker,
     widgets::{
-        canvas::{Canvas, Painter, Rectangle, Shape},
+        canvas::{Canvas, Painter, Shape},
         Block, BorderType, Padding, Widget,
     },
     Terminal,
