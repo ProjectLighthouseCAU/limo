@@ -3,7 +3,7 @@ use anyhow::Result;
 use clap::{command, Parser};
 use crossterm::event::{Event, EventStream, KeyCode, KeyEventKind};
 use futures::{select, StreamExt};
-use lighthouse_client::protocol::{Frame, InputEvent, Model, LIGHTHOUSE_COLS, LIGHTHOUSE_ROWS};
+use lighthouse_client::protocol::{Frame, LegacyInputEvent, Model, LIGHTHOUSE_COLS, LIGHTHOUSE_ROWS};
 use ratatui::{
     backend::CrosstermBackend,
     crossterm::{
@@ -49,7 +49,8 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
                 Some(Ok(Event::Key(e))) => match e.code {
                     KeyCode::Char(QUIT_KEY) => break,
                     _ => if let Some(code) = key_code_to_js(e.code) {
-                        ctx.lh.put(&path.as_lh_vec(), Model::InputEvent(InputEvent {
+                        // TODO: Use new input API
+                        ctx.lh.put(&path.as_lh_vec(), Model::InputEvent(LegacyInputEvent {
                             source: 0,
                             key: Some(code),
                             button: None,
@@ -77,8 +78,6 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
 
     stdout().execute(LeaveAlternateScreen)?;
     disable_raw_mode()?;
-
-    ctx.lh.stop(&path.as_lh_vec()).await?;
 
     Ok(String::new())
 }
