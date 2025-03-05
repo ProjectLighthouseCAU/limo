@@ -1,4 +1,5 @@
 mod cmd;
+mod client_id;
 mod context;
 mod line;
 mod path;

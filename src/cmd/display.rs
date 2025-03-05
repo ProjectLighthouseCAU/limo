@@ -1,9 +1,9 @@
-use crate::{context::Context, path::VirtualPathBuf};
+use crate::{client_id::CLIENT_ID, context::Context, path::VirtualPathBuf};
 use anyhow::Result;
 use clap::{command, Parser};
 use crossterm::event::{Event, EventStream, KeyCode, KeyEventKind};
 use futures::{select, StreamExt};
-use lighthouse_client::protocol::{Frame, InputEvent, Model, LIGHTHOUSE_COLS, LIGHTHOUSE_ROWS};
+use lighthouse_client::protocol::{EventSource, Frame, InputEvent, KeyEvent, KeyModifiers, LegacyInputEvent, Model, LIGHTHOUSE_COLS, LIGHTHOUSE_ROWS};
 use ratatui::{
     backend::CrosstermBackend,
     crossterm::{
@@ -25,6 +25,9 @@ const QUIT_KEY: char = 'q';
 #[derive(Parser)]
 #[command(bin_name = "display")]
 struct Args {
+    #[arg(short, long, action, help = "Generate legacy input events")]
+    legacy: bool,
+
     #[arg(
         default_value = ".",
         help = "The resource to display as an image stream"
@@ -48,14 +51,29 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
             msg = reader.next() => match msg {
                 Some(Ok(Event::Key(e))) => match e.code {
                     KeyCode::Char(QUIT_KEY) => break,
-                    _ => if let Some(code) = key_code_to_js(e.code) {
-                        ctx.lh.put(&path.as_lh_vec(), Model::InputEvent(InputEvent {
-                            source: 0,
-                            key: Some(code),
-                            button: None,
-                            is_down: matches!(e.kind, KeyEventKind::Press | KeyEventKind::Repeat),
-                        })).await?;
-                    }
+                    _ => {
+                        let down = matches!(e.kind, KeyEventKind::Press | KeyEventKind::Repeat);
+                        if args.legacy {
+                            if let Some(code) = key_code_to_js_key_code(e.code) {
+                                ctx.lh.put(&path.as_lh_vec(), Model::InputEvent(LegacyInputEvent {
+                                    source: 0,
+                                    key: Some(code),
+                                    button: None,
+                                    is_down: down,
+                                })).await?;
+                            }
+                        } else {
+                            if let Some(code) = key_code_to_js_code(e.code) {
+                                ctx.lh.put_input(InputEvent::Key(KeyEvent {
+                                    source: EventSource::String(format!("limo:{}", *CLIENT_ID)),
+                                    code,
+                                    down,
+                                    repeat: matches!(e.kind, KeyEventKind::Repeat),
+                                    modifiers: KeyModifiers::default(),
+                                })).await?;
+                            }
+                        }
+                    },
                 },
                 None | Some(Err(_)) => break,
                 _ => {},
@@ -77,8 +95,6 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
 
     stdout().execute(LeaveAlternateScreen)?;
     disable_raw_mode()?;
-
-    ctx.lh.stop(&path.as_lh_vec()).await?;
 
     Ok(String::new())
 }
@@ -151,7 +167,7 @@ impl Shape for Display {
     }
 }
 
-fn key_code_to_js(key_code: KeyCode) -> Option<i32> {
+fn key_code_to_js_key_code(key_code: KeyCode) -> Option<i32> {
     match key_code {
         KeyCode::Backspace => Some(8),
         KeyCode::Enter => Some(13),
@@ -174,6 +190,31 @@ fn key_code_to_js(key_code: KeyCode) -> Option<i32> {
         KeyCode::NumLock => Some(144),
         KeyCode::PrintScreen => Some(44),
         KeyCode::Pause => Some(19),
+        _ => None,
+    }
+}
+
+fn key_code_to_js_code(key_code: KeyCode) -> Option<String> {
+    match key_code {
+        KeyCode::Backspace => Some("Backspace".into()),
+        KeyCode::Enter => Some("Enter".into()),
+        KeyCode::Left => Some("ArrowLeft".into()),
+        KeyCode::Right => Some("ArrowRight".into()),
+        KeyCode::Up => Some("ArrowUp".into()),
+        KeyCode::Down => Some("ArrowDown".into()),
+        KeyCode::Home => Some("Home".into()),
+        KeyCode::End => Some("End".into()),
+        KeyCode::PageUp => Some("PageUp".into()),
+        KeyCode::PageDown => Some("PageDown".into()),
+        KeyCode::Tab => Some("Tab".into()),
+        KeyCode::Delete => Some("Delete".into()),
+        KeyCode::Insert => Some("Insert".into()),
+        KeyCode::F(n) => Some(format!("F{n}")),
+        KeyCode::Char(c) if c.is_ascii_digit() => Some(format!("Digit{c}")),
+        KeyCode::Char(c) => Some(format!("Key{c}")),
+        KeyCode::Esc => Some("Escape".into()),
+        KeyCode::CapsLock => Some("CapsLock".into()),
+        KeyCode::NumLock => Some("NumLock".into()),
         _ => None,
     }
 }
