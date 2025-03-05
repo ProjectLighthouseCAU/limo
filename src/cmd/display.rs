@@ -63,11 +63,16 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
                                 })).await?;
                             }
                         } else {
-                            if let Some(key) = key_code_to_js_key(e.code) {
+                            if let Some(code) = key_code_to_js_code(e.code) {
                                 ctx.lh.put_input(InputEvent::Key(KeyEvent {
                                     source: EventSource::String(format!("limo:{}", *CLIENT_ID)),
-                                    key,
+                                    code,
                                     down,
+                                    repeat: matches!(e.kind, KeyEventKind::Repeat),
+                                    alt_key: false,
+                                    ctrl_key: false,
+                                    meta_key: false,
+                                    shift_key: false,
                                 })).await?;
                             }
                         }
@@ -192,7 +197,7 @@ fn key_code_to_js_key_code(key_code: KeyCode) -> Option<i32> {
     }
 }
 
-fn key_code_to_js_key(key_code: KeyCode) -> Option<String> {
+fn key_code_to_js_code(key_code: KeyCode) -> Option<String> {
     match key_code {
         KeyCode::Backspace => Some("Backspace".into()),
         KeyCode::Enter => Some("Enter".into()),
@@ -208,7 +213,8 @@ fn key_code_to_js_key(key_code: KeyCode) -> Option<String> {
         KeyCode::Delete => Some("Delete".into()),
         KeyCode::Insert => Some("Insert".into()),
         KeyCode::F(n) => Some(format!("F{n}")),
-        KeyCode::Char(c) => Some(c.to_string()),
+        KeyCode::Char(c) if c.is_ascii_digit() => Some(format!("Digit{c}")),
+        KeyCode::Char(c) => Some(format!("Key{c}")),
         KeyCode::Esc => Some("Escape".into()),
         KeyCode::CapsLock => Some("CapsLock".into()),
         KeyCode::NumLock => Some("NumLock".into()),
