@@ -86,7 +86,7 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
                             lh_frame,
                             format!("{} ({}: quit)", path, QUIT_KEY),
                         );
-                        frame.render_widget(canvas, frame.size());
+                        frame.render_widget(canvas, frame.area());
                     })?;
                 }
             },
