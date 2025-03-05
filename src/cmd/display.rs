@@ -3,7 +3,7 @@ use anyhow::Result;
 use clap::{command, Parser};
 use crossterm::event::{Event, EventStream, KeyCode, KeyEventKind};
 use futures::{select, StreamExt};
-use lighthouse_client::protocol::{EventSource, Frame, InputEvent, KeyEvent, LegacyInputEvent, Model, LIGHTHOUSE_COLS, LIGHTHOUSE_ROWS};
+use lighthouse_client::protocol::{EventSource, Frame, InputEvent, KeyEvent, KeyModifiers, LegacyInputEvent, Model, LIGHTHOUSE_COLS, LIGHTHOUSE_ROWS};
 use ratatui::{
     backend::CrosstermBackend,
     crossterm::{
@@ -69,10 +69,7 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
                                     code,
                                     down,
                                     repeat: matches!(e.kind, KeyEventKind::Repeat),
-                                    alt_key: false,
-                                    ctrl_key: false,
-                                    meta_key: false,
-                                    shift_key: false,
+                                    modifiers: KeyModifiers::default(),
                                 })).await?;
                             }
                         }
