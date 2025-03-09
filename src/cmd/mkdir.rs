@@ -20,14 +20,25 @@ pub async fn invoke(args: &[String], ctx: &mut Context) -> Result<String> {
         if path.is_root() {
             bail!("Cannot create root directory");
         }
+
         let parent_exists = ctx.lh.list(&path.parent().as_lh_vec()).await.is_ok();
-        if !args.parents && !parent_exists {
-            bail!("{} does not exist, pass -p to create intermediate directories", path.parent())
+
+        if parent_exists {
+            let result = ctx.lh.mkdir(&path.as_lh_vec()).await;
+            if !args.parents {
+                result?;
+            }
+        } else {
+            if !args.parents {
+                bail!("{} does not exist, pass -p to create intermediate directories", path.parent())
+            }
+
+            let lh_path = path.as_lh_vec();
+            for i in 1..=lh_path.len() {
+                ctx.lh.mkdir(&lh_path[..i]).await?;
+            }
         }
-        let result = ctx.lh.mkdir(&path.as_lh_vec()).await;
-        if !args.parents {
-            result?;
-        }
+        
     }
     Ok(String::new())
 }
